@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { supabase } from "../services/supabaseClient";
 import { Link } from "react-router-dom";
 import { Search, Users, Award, BookOpen, PlayCircle, ChevronRight, CheckCircle2, FileText, Clock, Calendar, Video } from "lucide-react";
 
@@ -9,16 +9,12 @@ export default function Home() {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const [testsRes, jobsRes] = await Promise.all([
-          axios.get("/api/tests"),
-          axios.get("/api/jobs"),
-        ]);
-        setTests(testsRes.data.slice(0, 4));
-        setJobs(jobsRes.data.slice(0, 4));
-      } catch (error) {
-        console.error("Failed to fetch home data", error);
-      }
+      const [testsRes, jobsRes] = await Promise.all([
+        supabase.from("tests").select("*").limit(4),
+        supabase.from("jobs").select("*").limit(4),
+      ]);
+      if (testsRes.data) setTests(testsRes.data);
+      if (jobsRes.data) setJobs(jobsRes.data);
     };
     fetchData();
   }, []);
@@ -179,7 +175,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {tests.length > 0 ? tests.map(test => (
-              <div key={test._id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl transition flex flex-col">
+              <div key={test.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl transition flex flex-col">
                 <div className="bg-blue-50 w-12 h-12 rounded-xl flex items-center justify-center text-blue-600 mb-4">
                   <FileText size={24} />
                 </div>
@@ -195,7 +191,7 @@ export default function Home() {
                     <CheckCircle2 size={16} className="text-[#15b86c]" /> {test.marks} Total Marks
                   </p>
                 </div>
-                <Link to={`/user/tests/${test._id}`} className="w-full block text-center bg-white border-2 border-[#15b86c] text-[#15b86c] py-2.5 rounded-lg font-bold hover:bg-[#15b86c] hover:text-white transition">
+                <Link to={`/user/tests/${test.id}`} className="w-full block text-center bg-white border-2 border-[#15b86c] text-[#15b86c] py-2.5 rounded-lg font-bold hover:bg-[#15b86c] hover:text-white transition">
                   Start Free Test
                 </Link>
               </div>
@@ -231,7 +227,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {jobs.length > 0 ? jobs.map(job => (
-            <div key={job._id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl transition flex flex-col">
+            <div key={job.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl transition flex flex-col">
               <div className="bg-orange-50 w-12 h-12 rounded-xl flex items-center justify-center text-orange-600 mb-4">
                 <Award size={24} />
               </div>

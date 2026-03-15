@@ -1,36 +1,35 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../services/supabaseClient";
 import { Edit, Trash2, Plus } from "lucide-react";
 
 export default function ManageTests() {
   const [tests, setTests] = useState<any[]>([]);
-  const { token } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [currentTest, setCurrentTest] = useState<any>({ questions: [] });
 
   const fetchTests = async () => {
-    const res = await axios.get("/api/tests", { headers: { Authorization: `Bearer ${token}` } });
-    setTests(res.data);
+    const { data, error } = await supabase.from("tests").select("*");
+    if (data) setTests(data);
+    if (error) console.error("Error fetching tests:", error);
   };
 
   useEffect(() => {
     fetchTests();
-  }, [token]);
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this test?")) {
-      await axios.delete(`/api/tests/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await supabase.from("tests").delete().eq("id", id);
       fetchTests();
     }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentTest._id) {
-      await axios.put(`/api/tests/${currentTest._id}`, currentTest, { headers: { Authorization: `Bearer ${token}` } });
+    if (currentTest.id) {
+      await supabase.from("tests").update(currentTest).eq("id", currentTest.id);
     } else {
-      await axios.post("/api/tests", currentTest, { headers: { Authorization: `Bearer ${token}` } });
+      await supabase.from("tests").insert(currentTest);
     }
     setIsEditing(false);
     setCurrentTest({ questions: [] });
@@ -67,7 +66,7 @@ export default function ManageTests() {
 
       {isEditing && (
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-800">{currentTest._id ? "Edit Test" : "Create New Test"}</h2>
+          <h2 className="text-2xl font-bold mb-6 text-gray-800">{currentTest.id ? "Edit Test" : "Create New Test"}</h2>
           <form onSubmit={handleSave} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <input type="text" placeholder="Test Title" value={currentTest.title || ""} onChange={e => setCurrentTest({...currentTest, title: e.target.value})} className="border p-3 rounded-lg w-full" required />
@@ -123,13 +122,13 @@ export default function ManageTests() {
           </thead>
           <tbody>
             {tests.map(test => (
-              <tr key={test._id} className="border-b border-gray-50 hover:bg-gray-50 transition">
+              <tr key={test.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
                 <td className="p-4 font-medium text-gray-800">{test.title}</td>
                 <td className="p-4 text-gray-600">{test.timeLimit} mins</td>
                 <td className="p-4 text-gray-600">{test.questions?.length || 0}</td>
                 <td className="p-4 flex justify-end gap-3">
                   <button onClick={() => { setCurrentTest(test); setIsEditing(true); }} className="text-blue-600 hover:text-blue-800 p-2 bg-blue-50 rounded-lg transition"><Edit size={18} /></button>
-                  <button onClick={() => handleDelete(test._id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
+                  <button onClick={() => handleDelete(test.id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
                 </td>
               </tr>
             ))}

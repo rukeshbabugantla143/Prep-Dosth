@@ -1,23 +1,26 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
-import axios from "axios";
+import { supabase } from "../services/supabaseClient";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     try {
-      const res = await axios.post("/api/auth/login", { email, password });
-      login(res.data.token, res.data.user);
-      navigate(res.data.user.role === "admin" ? "/admin" : "/user");
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      
+      // Redirect based on role (need to fetch profile first or rely on AuthContext)
+      // For now, redirect to a dashboard and let AuthContext handle profile
+      navigate("/dashboard");
     } catch (err: any) {
-      setError(err.response?.data?.error || "Login failed");
+      setError(err.message || "Login failed");
     }
   };
 

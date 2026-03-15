@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { supabase } from "../services/supabaseClient";
 import { format } from "date-fns";
 import { Search } from "lucide-react";
 
@@ -9,7 +9,12 @@ export default function Exams() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    axios.get("/api/exams").then(res => setExams(res.data));
+    const fetchExams = async () => {
+      const { data, error } = await supabase.from("exams").select("*");
+      if (data) setExams(data);
+      if (error) console.error("Error fetching exams:", error);
+    };
+    fetchExams();
   }, []);
 
   const filters = [
@@ -64,7 +69,7 @@ export default function Exams() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredExams.length > 0 ? filteredExams.map(exam => (
-          <div key={exam._id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition duration-300 flex flex-col">
+          <div key={exam.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition duration-300 flex flex-col">
             <h2 className="text-2xl font-bold text-blue-700 mb-2">{exam.title}</h2>
             <p className="text-gray-600 font-medium mb-4 flex-grow">{exam.description}</p>
             

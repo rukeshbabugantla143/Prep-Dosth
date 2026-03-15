@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axios from "axios";
+import { supabase } from "../services/supabaseClient";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -12,11 +12,35 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     try {
-      await axios.post("/api/auth/register", { name, email, password, role });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, role }
+        }
+      });
+      if (error) throw error;
+      
+      // Manually insert profile if trigger isn't set up
+      if (data.user) {
+        const { error: profileError } = await supabase.from("profiles").insert({
+          id: data.user.id,
+          name,
+          email,
+          role
+        });
+        
+        if (profileError) {
+          console.error("Profile insertion error:", profileError);
+          throw new Error("User registered but profile creation failed: " + profileError.message);
+        }
+      }
+      
       navigate("/login");
     } catch (err: any) {
-      setError(err.response?.data?.error || "Registration failed");
+      setError(err.message || "Registration failed");
     }
   };
 

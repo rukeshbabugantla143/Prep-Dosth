@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
-import axios from "axios";
+import { supabase } from "../services/supabaseClient";
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchNotifications = async () => {
-      try {
-        const res = await axios.get("/api/notifications");
-        setNotifications(res.data);
-      } catch (error) {
-        console.error("Failed to fetch notifications", error);
-      }
+      const { data, error } = await supabase.from("notifications").select("*");
+      if (data) setNotifications(data);
+      if (error) console.error("Error fetching notifications:", error);
     };
     fetchNotifications();
   }, []);
@@ -24,7 +21,7 @@ export default function Notifications() {
       </h1>
       <div className="space-y-4">
         {notifications.map((notif) => (
-          <div key={notif._id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition flex justify-between items-center cursor-pointer">
+          <div key={notif.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition flex justify-between items-center cursor-pointer">
             <div>
               <h3 className="text-lg font-bold text-gray-800 mb-1">{notif.title}</h3>
               <p className="text-sm text-gray-500">{notif.date}</p>

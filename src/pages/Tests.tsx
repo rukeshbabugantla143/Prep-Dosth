@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { supabase } from "../services/supabaseClient";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -8,7 +8,12 @@ export default function Tests() {
   const { user } = useAuth();
 
   useEffect(() => {
-    axios.get("/api/tests").then(res => setTests(res.data));
+    const fetchTests = async () => {
+      const { data, error } = await supabase.from("tests").select("*");
+      if (data) setTests(data);
+      if (error) console.error("Error fetching tests:", error);
+    };
+    fetchTests();
   }, []);
 
   return (
@@ -16,7 +21,7 @@ export default function Tests() {
       <h1 className="text-4xl font-bold mb-8 text-gray-800">Mock Tests</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {tests.map(test => (
-          <div key={test._id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition duration-300 flex flex-col">
+          <div key={test.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition duration-300 flex flex-col">
             <h2 className="text-2xl font-bold text-blue-700 mb-4">{test.title}</h2>
             
             <div className="space-y-3 text-gray-700 mb-6 flex-grow">
@@ -36,7 +41,7 @@ export default function Tests() {
             
             <div className="mt-auto">
               {user ? (
-                <Link to={`/user/tests/${test._id}`} className="block text-center bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md">
+                <Link to={`/user/tests/${test.id}`} className="block text-center bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md">
                   Start Test
                 </Link>
               ) : (

@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../services/supabaseClient";
 import { Edit, Trash2, Plus } from "lucide-react";
 
 export default function ManageJobs() {
   const [jobs, setJobs] = useState<any[]>([]);
-  const { token } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [currentJob, setCurrentJob] = useState<any>({});
 
   const fetchJobs = async () => {
-    const res = await axios.get("/api/jobs");
-    setJobs(res.data);
+    const { data, error } = await supabase.from("jobs").select("*");
+    if (data) setJobs(data);
+    if (error) console.error("Error fetching jobs:", error);
   };
 
   useEffect(() => {
@@ -20,17 +19,25 @@ export default function ManageJobs() {
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this job?")) {
-      await axios.delete(`/api/jobs/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await supabase.from("jobs").delete().eq("id", id);
       fetchJobs();
     }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentJob._id) {
-      await axios.put(`/api/jobs/${currentJob._id}`, currentJob, { headers: { Authorization: `Bearer ${token}` } });
+    let error;
+    if (currentJob.id) {
+      const res = await supabase.from("jobs").update(currentJob).eq("id", currentJob.id);
+      error = res.error;
     } else {
-      await axios.post("/api/jobs", currentJob, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await supabase.from("jobs").insert(currentJob);
+      error = res.error;
+    }
+    if (error) {
+      console.error("Error saving job:", error);
+      alert("Failed to save job: " + error.message);
+      return;
     }
     setIsEditing(false);
     setCurrentJob({});
@@ -48,7 +55,7 @@ export default function ManageJobs() {
 
       {isEditing && (
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-800">{currentJob._id ? "Edit Job" : "Add New Job"}</h2>
+          <h2 className="text-2xl font-bold mb-6 text-gray-800">{currentJob.id ? "Edit Job" : "Add New Job"}</h2>
           <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <input type="text" placeholder="Title" value={currentJob.title || ""} onChange={e => setCurrentJob({...currentJob, title: e.target.value})} className="border p-3 rounded-lg w-full" required />
             <input type="text" placeholder="Department" value={currentJob.department || ""} onChange={e => setCurrentJob({...currentJob, department: e.target.value})} className="border p-3 rounded-lg w-full" required />
@@ -80,13 +87,13 @@ export default function ManageJobs() {
           </thead>
           <tbody>
             {jobs.map(job => (
-              <tr key={job._id} className="border-b border-gray-50 hover:bg-gray-50 transition">
+              <tr key={job.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
                 <td className="p-4 font-medium text-gray-800">{job.title}</td>
                 <td className="p-4 text-gray-600">{job.department}</td>
                 <td className="p-4 text-gray-600">{job.posts}</td>
                 <td className="p-4 flex justify-end gap-3">
                   <button onClick={() => { setCurrentJob(job); setIsEditing(true); }} className="text-blue-600 hover:text-blue-800 p-2 bg-blue-50 rounded-lg transition"><Edit size={18} /></button>
-                  <button onClick={() => handleDelete(job._id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
+                  <button onClick={() => handleDelete(job.id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
                 </td>
               </tr>
             ))}

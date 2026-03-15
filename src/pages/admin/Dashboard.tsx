@@ -1,32 +1,28 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../services/supabaseClient";
 import { Users, Briefcase, FileText, CheckSquare } from "lucide-react";
 
 export default function AdminDashboard() {
-  const { token } = useAuth();
   const [stats, setStats] = useState({ users: 0, jobs: 0, exams: 0, tests: 0 });
 
   useEffect(() => {
     const fetchStats = async () => {
-      try {
-        const [jobsRes, examsRes, testsRes] = await Promise.all([
-          axios.get("/api/jobs"),
-          axios.get("/api/exams"),
-          axios.get("/api/tests"),
-        ]);
-        setStats({
-          users: 15, // Mocked for now, would need a /api/users endpoint
-          jobs: jobsRes.data.length,
-          exams: examsRes.data.length,
-          tests: testsRes.data.length,
-        });
-      } catch (error) {
-        console.error("Failed to fetch stats", error);
-      }
+      const [jobsRes, examsRes, testsRes, usersRes] = await Promise.all([
+        supabase.from("jobs").select("*", { count: 'exact', head: true }),
+        supabase.from("exams").select("*", { count: 'exact', head: true }),
+        supabase.from("tests").select("*", { count: 'exact', head: true }),
+        supabase.from("profiles").select("*", { count: 'exact', head: true }),
+      ]);
+      
+      setStats({
+        users: usersRes.count || 0,
+        jobs: jobsRes.count || 0,
+        exams: examsRes.count || 0,
+        tests: testsRes.count || 0,
+      });
     };
     fetchStats();
-  }, [token]);
+  }, []);
 
   return (
     <div>

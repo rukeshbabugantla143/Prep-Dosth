@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../services/supabaseClient";
 import { Edit, Trash2, Plus } from "lucide-react";
 
 export default function ManageHome() {
   const [heroes, setHeroes] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
-  const { token } = useAuth();
   
   const [isEditingHero, setIsEditingHero] = useState(false);
   const [currentHero, setCurrentHero] = useState<any>({});
@@ -16,11 +14,11 @@ export default function ManageHome() {
 
   const fetchData = async () => {
     const [heroRes, sectionRes] = await Promise.all([
-      axios.get("/api/home/hero"),
-      axios.get("/api/home/sections")
+      supabase.from("hero").select("*"),
+      supabase.from("sections").select("*")
     ]);
-    setHeroes(heroRes.data);
-    setSections(sectionRes.data);
+    if (heroRes.data) setHeroes(heroRes.data);
+    if (sectionRes.data) setSections(sectionRes.data);
   };
 
   useEffect(() => {
@@ -29,10 +27,10 @@ export default function ManageHome() {
 
   const handleSaveHero = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentHero._id) {
-      await axios.put(`/api/home/hero/${currentHero._id}`, currentHero, { headers: { Authorization: `Bearer ${token}` } });
+    if (currentHero.id) {
+      await supabase.from("hero").update(currentHero).eq("id", currentHero.id);
     } else {
-      await axios.post("/api/home/hero", currentHero, { headers: { Authorization: `Bearer ${token}` } });
+      await supabase.from("hero").insert(currentHero);
     }
     setIsEditingHero(false);
     setCurrentHero({});
@@ -41,10 +39,10 @@ export default function ManageHome() {
 
   const handleSaveSection = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentSection._id) {
-      await axios.put(`/api/home/sections/${currentSection._id}`, currentSection, { headers: { Authorization: `Bearer ${token}` } });
+    if (currentSection.id) {
+      await supabase.from("sections").update(currentSection).eq("id", currentSection.id);
     } else {
-      await axios.post("/api/home/sections", currentSection, { headers: { Authorization: `Bearer ${token}` } });
+      await supabase.from("sections").insert(currentSection);
     }
     setIsEditingSection(false);
     setCurrentSection({});
@@ -53,14 +51,14 @@ export default function ManageHome() {
 
   const handleDeleteHero = async (id: string) => {
     if (confirm("Delete this hero image?")) {
-      await axios.delete(`/api/home/hero/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await supabase.from("hero").delete().eq("id", id);
       fetchData();
     }
   };
 
   const handleDeleteSection = async (id: string) => {
     if (confirm("Delete this section?")) {
-      await axios.delete(`/api/home/sections/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await supabase.from("sections").delete().eq("id", id);
       fetchData();
     }
   };
@@ -80,7 +78,7 @@ export default function ManageHome() {
 
         {isEditingHero && (
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
-            <h3 className="text-xl font-bold mb-6 text-gray-800">{currentHero._id ? "Edit Hero" : "Add Hero"}</h3>
+            <h3 className="text-xl font-bold mb-6 text-gray-800">{currentHero.id ? "Edit Hero" : "Add Hero"}</h3>
             <form onSubmit={handleSaveHero} className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <input type="text" placeholder="Image URL" value={currentHero.image || ""} onChange={e => setCurrentHero({...currentHero, image: e.target.value})} className="border p-3 rounded-lg w-full md:col-span-2" required />
               <input type="text" placeholder="Title" value={currentHero.title || ""} onChange={e => setCurrentHero({...currentHero, title: e.target.value})} className="border p-3 rounded-lg w-full" required />
@@ -98,14 +96,14 @@ export default function ManageHome() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {heroes.map(hero => (
-            <div key={hero._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div key={hero.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <img src={hero.image} alt={hero.title} className="w-full h-48 object-cover" />
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">{hero.title}</h3>
                 <p className="text-gray-600 mb-4">{hero.subtitle}</p>
                 <div className="flex justify-end gap-3">
                   <button onClick={() => { setCurrentHero(hero); setIsEditingHero(true); }} className="text-blue-600 hover:text-blue-800 p-2 bg-blue-50 rounded-lg transition"><Edit size={18} /></button>
-                  <button onClick={() => handleDeleteHero(hero._id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
+                  <button onClick={() => handleDeleteHero(hero.id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
                 </div>
               </div>
             </div>
@@ -124,7 +122,7 @@ export default function ManageHome() {
 
         {isEditingSection && (
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
-            <h3 className="text-xl font-bold mb-6 text-gray-800">{currentSection._id ? "Edit Section" : "Add Section"}</h3>
+            <h3 className="text-xl font-bold mb-6 text-gray-800">{currentSection.id ? "Edit Section" : "Add Section"}</h3>
             <form onSubmit={handleSaveSection} className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <input type="text" placeholder="Title" value={currentSection.title || ""} onChange={e => setCurrentSection({...currentSection, title: e.target.value})} className="border p-3 rounded-lg w-full" required />
               <input type="text" placeholder="Image URL (Optional)" value={currentSection.image || ""} onChange={e => setCurrentSection({...currentSection, image: e.target.value})} className="border p-3 rounded-lg w-full" />
@@ -142,14 +140,14 @@ export default function ManageHome() {
 
         <div className="space-y-6">
           {sections.map(section => (
-            <div key={section._id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 items-center">
+            <div key={section.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 items-center">
               {section.image && <img src={section.image} alt={section.title} className="w-full md:w-48 h-32 object-cover rounded-xl" />}
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">{section.title}</h3>
                 <p className="text-gray-600 mb-4">{section.description}</p>
                 <div className="flex gap-3">
                   <button onClick={() => { setCurrentSection(section); setIsEditingSection(true); }} className="text-blue-600 hover:text-blue-800 p-2 bg-blue-50 rounded-lg transition"><Edit size={18} /></button>
-                  <button onClick={() => handleDeleteSection(section._id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
+                  <button onClick={() => handleDeleteSection(section.id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
                 </div>
               </div>
             </div>

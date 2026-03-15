@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import MainLayout from "./components/layouts/MainLayout";
 import AdminLayout from "./components/layouts/AdminLayout";
 import UserLayout from "./components/layouts/UserLayout";
+import DashboardRedirect from "./components/DashboardRedirect";
 
 // Pages
 import Home from "./pages/Home";
@@ -59,6 +60,13 @@ export default function App() {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
           </Route>
+
+          {/* Dashboard Redirect */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <DashboardRedirect />
+            </ProtectedRoute>
+          } />
 
           {/* User Routes */}
           <Route path="/user" element={<ProtectedRoute role="user"><UserLayout /></ProtectedRoute>}>

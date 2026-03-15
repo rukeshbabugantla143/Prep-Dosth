@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../services/supabaseClient";
 import { Edit, Trash2, Plus } from "lucide-react";
 
 export default function ManageExams() {
   const [exams, setExams] = useState<any[]>([]);
-  const { token } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [currentExam, setCurrentExam] = useState<any>({});
 
   const fetchExams = async () => {
-    const res = await axios.get("/api/exams");
-    setExams(res.data);
+    const { data, error } = await supabase.from("exams").select("*");
+    if (data) setExams(data);
+    if (error) console.error("Error fetching exams:", error);
   };
 
   useEffect(() => {
@@ -20,17 +19,25 @@ export default function ManageExams() {
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this exam?")) {
-      await axios.delete(`/api/exams/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await supabase.from("exams").delete().eq("id", id);
       fetchExams();
     }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentExam._id) {
-      await axios.put(`/api/exams/${currentExam._id}`, currentExam, { headers: { Authorization: `Bearer ${token}` } });
+    let error;
+    if (currentExam.id) {
+      const res = await supabase.from("exams").update(currentExam).eq("id", currentExam.id);
+      error = res.error;
     } else {
-      await axios.post("/api/exams", currentExam, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await supabase.from("exams").insert(currentExam);
+      error = res.error;
+    }
+    if (error) {
+      console.error("Error saving exam:", error);
+      alert("Failed to save exam: " + error.message);
+      return;
     }
     setIsEditing(false);
     setCurrentExam({});
@@ -48,7 +55,7 @@ export default function ManageExams() {
 
       {isEditing && (
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-800">{currentExam._id ? "Edit Exam" : "Add New Exam"}</h2>
+          <h2 className="text-2xl font-bold mb-6 text-gray-800">{currentExam.id ? "Edit Exam" : "Add New Exam"}</h2>
           <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <input type="text" placeholder="Title" value={currentExam.title || ""} onChange={e => setCurrentExam({...currentExam, title: e.target.value})} className="border p-3 rounded-lg w-full" required />
             <input type="date" placeholder="Date" value={currentExam.date ? new Date(currentExam.date).toISOString().split('T')[0] : ""} onChange={e => setCurrentExam({...currentExam, date: e.target.value})} className="border p-3 rounded-lg w-full" required />
@@ -74,12 +81,12 @@ export default function ManageExams() {
           </thead>
           <tbody>
             {exams.map(exam => (
-              <tr key={exam._id} className="border-b border-gray-50 hover:bg-gray-50 transition">
+              <tr key={exam.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
                 <td className="p-4 font-medium text-gray-800">{exam.title}</td>
                 <td className="p-4 text-gray-600">{new Date(exam.date).toLocaleDateString()}</td>
                 <td className="p-4 flex justify-end gap-3">
                   <button onClick={() => { setCurrentExam(exam); setIsEditing(true); }} className="text-blue-600 hover:text-blue-800 p-2 bg-blue-50 rounded-lg transition"><Edit size={18} /></button>
-                  <button onClick={() => handleDelete(exam._id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
+                  <button onClick={() => handleDelete(exam.id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
                 </td>
               </tr>
             ))}

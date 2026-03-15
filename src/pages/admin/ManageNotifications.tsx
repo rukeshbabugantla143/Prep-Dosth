@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../services/supabaseClient";
 import { Edit, Trash2, Plus } from "lucide-react";
 
 export default function ManageNotifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
-  const { token } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [currentNotification, setCurrentNotification] = useState<any>({});
 
   const fetchNotifications = async () => {
-    const res = await axios.get("/api/notifications");
-    setNotifications(res.data);
+    const { data, error } = await supabase.from("notifications").select("*");
+    if (data) setNotifications(data);
+    if (error) console.error("Error fetching notifications:", error);
   };
 
   useEffect(() => {
@@ -20,17 +19,17 @@ export default function ManageNotifications() {
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this notification?")) {
-      await axios.delete(`/api/notifications/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await supabase.from("notifications").delete().eq("id", id);
       fetchNotifications();
     }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentNotification._id) {
-      await axios.put(`/api/notifications/${currentNotification._id}`, currentNotification, { headers: { Authorization: `Bearer ${token}` } });
+    if (currentNotification.id) {
+      await supabase.from("notifications").update(currentNotification).eq("id", currentNotification.id);
     } else {
-      await axios.post("/api/notifications", currentNotification, { headers: { Authorization: `Bearer ${token}` } });
+      await supabase.from("notifications").insert(currentNotification);
     }
     setIsEditing(false);
     setCurrentNotification({});
@@ -48,7 +47,7 @@ export default function ManageNotifications() {
 
       {isEditing && (
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-800">{currentNotification._id ? "Edit Notification" : "Add New Notification"}</h2>
+          <h2 className="text-2xl font-bold mb-6 text-gray-800">{currentNotification.id ? "Edit Notification" : "Add New Notification"}</h2>
           <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <input type="text" placeholder="Title" value={currentNotification.title || ""} onChange={e => setCurrentNotification({...currentNotification, title: e.target.value})} className="border p-3 rounded-lg w-full" required />
             <input type="text" placeholder="Date (e.g., 2 hours ago)" value={currentNotification.date || ""} onChange={e => setCurrentNotification({...currentNotification, date: e.target.value})} className="border p-3 rounded-lg w-full" required />
@@ -80,13 +79,13 @@ export default function ManageNotifications() {
           </thead>
           <tbody>
             {notifications.map(notif => (
-              <tr key={notif._id} className="border-b border-gray-50 hover:bg-gray-50 transition">
+              <tr key={notif.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
                 <td className="p-4 font-medium text-gray-800">{notif.title}</td>
                 <td className="p-4 text-gray-600">{notif.date}</td>
                 <td className="p-4 text-gray-600 capitalize">{notif.type}</td>
                 <td className="p-4 flex justify-end gap-3">
                   <button onClick={() => { setCurrentNotification(notif); setIsEditing(true); }} className="text-blue-600 hover:text-blue-800 p-2 bg-blue-50 rounded-lg transition"><Edit size={18} /></button>
-                  <button onClick={() => handleDelete(notif._id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
+                  <button onClick={() => handleDelete(notif.id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
                 </td>
               </tr>
             ))}

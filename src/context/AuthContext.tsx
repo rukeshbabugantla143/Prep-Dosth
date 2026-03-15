@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import axios from "axios";
+import { supabase } from "../services/supabaseClient";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface User {
-  _id: string;
+  id: string;
   name: string;
   email: string;
   role: "user" | "admin";
@@ -10,52 +11,72 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
-  login: (token: string, user: User) => void;
-  logout: () => void;
   loading: boolean;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      if (token) {
-        try {
-          const response = await axios.get("/api/auth/me", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setUser(response.data);
-        } catch (error) {
-          console.error("Failed to fetch user", error);
-          logout();
-        }
+    const fetchProfile = async (supabaseUser: SupabaseUser) => {
+      console.log("Fetching profile for:", supabaseUser.id);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", supabaseUser.id);
+      
+      if (error) {
+        console.error("Error fetching profile:", error);
+        setLoading(false);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        const profile = data[0];
+        console.log("Profile fetched:", profile);
+        setUser({
+          id: supabaseUser.id,
+          name: profile.name,
+          email: supabaseUser.email!,
+          role: profile.role,
+        });
+      } else {
+        console.warn("No profile found for user:", supabaseUser.id);
       }
       setLoading(false);
     };
 
-    fetchUser();
-  }, [token]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchProfile(session.user);
+      } else {
+        setLoading(false);
+      }
+    });
 
-  const login = (newToken: string, userData: User) => {
-    localStorage.setItem("token", newToken);
-    setToken(newToken);
-    setUser(userData);
-  };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        fetchProfile(session.user);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setToken(null);
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );

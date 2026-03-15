@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { supabase } from "../services/supabaseClient";
 import { format } from "date-fns";
 import { Search } from "lucide-react";
 
@@ -9,7 +9,12 @@ export default function Jobs() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    axios.get("/api/jobs").then(res => setJobs(res.data));
+    const fetchJobs = async () => {
+      const { data, error } = await supabase.from("jobs").select("*");
+      if (data) setJobs(data);
+      if (error) console.error("Error fetching jobs:", error);
+    };
+    fetchJobs();
   }, []);
 
   const filters = [
@@ -64,7 +69,7 @@ export default function Jobs() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredJobs.length > 0 ? filteredJobs.map(job => (
-          <div key={job._id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition duration-300 flex flex-col">
+          <div key={job.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition duration-300 flex flex-col">
             <div className="flex-grow">
               <h2 className="text-2xl font-bold text-blue-700 mb-2">{job.title}</h2>
               <p className="text-gray-600 font-medium mb-4">{job.department}</p>
@@ -88,7 +93,7 @@ export default function Jobs() {
                 </div>
                 <div className="flex justify-between pt-1">
                   <span className="text-gray-500">Posted:</span>
-                  <span className="font-semibold">{format(new Date(job.createdAt), 'dd MMM yyyy')}</span>
+                  <span className="font-semibold">{format(new Date(job.created_at), 'dd MMM yyyy')}</span>
                 </div>
               </div>
             </div>
