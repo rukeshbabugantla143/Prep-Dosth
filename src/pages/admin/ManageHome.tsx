@@ -97,7 +97,7 @@ export default function ManageHome() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {heroes.map(hero => (
             <div key={hero.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <img src={hero.image} alt={hero.title} className="w-full h-48 object-cover" />
+              <img src={hero.image} alt={hero.title} className="w-full h-48 object-cover" referrerPolicy="no-referrer" />
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">{hero.title}</h3>
                 <p className="text-gray-600 mb-4">{hero.subtitle}</p>
@@ -141,7 +141,7 @@ export default function ManageHome() {
         <div className="space-y-6">
           {sections.map(section => (
             <div key={section.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 items-center">
-              {section.image && <img src={section.image} alt={section.title} className="w-full md:w-48 h-32 object-cover rounded-xl" />}
+              {section.image && <img src={section.image} alt={section.title} className="w-full md:w-48 h-32 object-cover rounded-xl" referrerPolicy="no-referrer" />}
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">{section.title}</h3>
                 <p className="text-gray-600 mb-4">{section.description}</p>
