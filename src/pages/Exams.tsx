@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
 import { format } from "date-fns";
 import { Search } from "lucide-react";
@@ -7,7 +7,8 @@ import { Search } from "lucide-react";
 export default function Exams() {
   const [exams, setExams] = useState<any[]>([]);
   const [filter, setFilter] = useState("All Exams");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
 
   useEffect(() => {
     const fetchExams = async () => {
@@ -17,6 +18,13 @@ export default function Exams() {
     };
     fetchExams();
   }, []);
+
+  useEffect(() => {
+    const query = searchParams.get("search");
+    if (query) {
+      setSearchQuery(query);
+    }
+  }, [searchParams]);
 
   const filters = [
     "All Exams",

@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../services/supabaseClient";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Search, Users, Award, BookOpen, PlayCircle, ChevronRight, CheckCircle2, FileText, Clock, Calendar, Video } from "lucide-react";
 
 export default function Home() {
   const [tests, setTests] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -18,6 +20,13 @@ export default function Home() {
     };
     fetchData();
   }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/exams?search=${encodeURIComponent(searchQuery)}`);
+    }
+  };
 
   const examCategories = [
     { name: "SSC Exams", count: "10+ Exams", icon: "🏛️" },
@@ -44,17 +53,19 @@ export default function Home() {
               Get SuperCoaching, Mock Tests, Study Notes & more for your exam preparation.
             </p>
             
-            <div className="bg-white p-2 rounded-xl flex items-center shadow-lg max-w-xl">
+            <form onSubmit={handleSearch} className="bg-white p-2 rounded-xl flex items-center shadow-lg max-w-xl">
               <Search className="text-gray-400 ml-3" size={24} />
               <input 
                 type="text" 
                 placeholder="Search for exams, test series, etc." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-4 py-3 text-gray-800 outline-none text-lg"
               />
-              <button className="bg-[#15b86c] text-white px-8 py-3 rounded-lg font-bold text-lg hover:bg-[#12a15e] transition whitespace-nowrap">
+              <button type="submit" className="bg-[#15b86c] text-white px-8 py-3 rounded-lg font-bold text-lg hover:bg-[#12a15e] transition whitespace-nowrap">
                 Search
               </button>
-            </div>
+            </form>
 
             <div className="flex flex-wrap gap-4 text-sm font-medium text-gray-300">
               <span className="flex items-center gap-1 bg-white/10 px-3 py-1.5 rounded-full"><CheckCircle2 size={16} className="text-[#15b86c]" /> Live Classes</span>
@@ -315,9 +326,9 @@ export default function Home() {
               <li className="flex items-center gap-3"><CheckCircle2 className="text-[#15b86c]" size={20} /> Detailed Performance Analysis</li>
             </ul>
             <div className="pt-4">
-              <button className="bg-[#15b86c] text-white px-10 py-4 rounded-xl font-black text-lg hover:bg-[#12a15e] transition shadow-lg shadow-[#15b86c]/20">
+              <Link to="/premium" className="inline-block bg-[#15b86c] text-white px-10 py-4 rounded-xl font-black text-lg hover:bg-[#12a15e] transition shadow-lg shadow-[#15b86c]/20">
                 Buy Pass Pro Now
-              </button>
+              </Link>
             </div>
           </div>
           <div className="md:w-1/2 relative">
