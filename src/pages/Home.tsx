@@ -241,7 +241,7 @@ export default function Home() {
                   <BookOpen size={16} className="text-gray-400" /> {job.qualification}
                 </p>
               </div>
-              <Link to="/jobs" className="w-full block text-center bg-gray-900 text-white py-2.5 rounded-lg font-bold hover:bg-gray-800 transition">
+              <Link to={`/jobs/${job.id}`} className="w-full block text-center bg-gray-900 text-white py-2.5 rounded-lg font-bold hover:bg-gray-800 transition">
                 View Details
               </Link>
             </div>

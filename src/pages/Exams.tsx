@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
 import { format } from "date-fns";
 import { Search } from "lucide-react";
@@ -80,10 +81,13 @@ export default function Exams() {
               </div>
             </div>
             
-            <div className="flex gap-3 mt-auto">
+            <div className="flex flex-col gap-3 mt-auto">
+              <Link to={`/exams/${exam.id}`} className="w-full text-center bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition shadow-sm">
+                View Full Details
+              </Link>
               {exam.link && (
-                <a href={exam.link} target="_blank" rel="noreferrer" className="flex-1 text-center bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition shadow-sm">
-                  View Details
+                <a href={exam.link.startsWith('http') ? exam.link : `https://${exam.link}`} target="_blank" rel="noreferrer" className="w-full text-center bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition text-sm">
+                  Official Link
                 </a>
               )}
             </div>

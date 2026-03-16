@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
 import { format } from "date-fns";
 import { Search } from "lucide-react";
@@ -98,17 +99,22 @@ export default function Jobs() {
               </div>
             </div>
             
-            <div className="flex gap-3 mt-auto">
-              {job.pdfLink && (
-                <a href={job.pdfLink} target="_blank" rel="noreferrer" className="flex-1 text-center bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition">
-                  Notification PDF
-                </a>
-              )}
-              {job.applyLink && (
-                <a href={job.applyLink} target="_blank" rel="noreferrer" className="flex-1 text-center bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition shadow-sm">
-                  Apply Now
-                </a>
-              )}
+            <div className="flex flex-col gap-3 mt-auto">
+              <Link to={`/jobs/${job.id}`} className="w-full text-center bg-blue-50 text-blue-700 py-2.5 rounded-lg font-bold hover:bg-blue-100 transition">
+                View Full Details
+              </Link>
+              <div className="flex gap-3">
+                {job.pdfLink && (
+                  <a href={job.pdfLink.startsWith('http') ? job.pdfLink : `https://${job.pdfLink}`} target="_blank" rel="noreferrer" className="flex-1 text-center bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition text-sm">
+                    PDF
+                  </a>
+                )}
+                {job.applyLink && (
+                  <a href={job.applyLink.startsWith('http') ? job.applyLink : `https://${job.applyLink}`} target="_blank" rel="noreferrer" className="flex-1 text-center bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition shadow-sm text-sm">
+                    Apply
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         )) : (

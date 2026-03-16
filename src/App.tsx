@@ -20,6 +20,9 @@ import Notifications from "./pages/Notifications";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 
+import JobDetails from "./pages/JobDetails";
+import ExamDetails from "./pages/ExamDetails";
+
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
 import ManageJobs from "./pages/admin/ManageJobs";
@@ -53,7 +56,9 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/jobs" element={<Jobs />} />
+            <Route path="/jobs/:id" element={<JobDetails />} />
             <Route path="/exams" element={<Exams />} />
+            <Route path="/exams/:id" element={<ExamDetails />} />
             <Route path="/tests" element={<Tests />} />
             <Route path="/premium" element={<Premium />} />
             <Route path="/notifications" element={<Notifications />} />
