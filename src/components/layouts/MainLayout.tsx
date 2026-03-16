@@ -1,7 +1,46 @@
 import { Outlet, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Search, Phone, LogIn, Menu, ChevronDown, ChevronRight, Plus, Users, Landmark, BookOpen, GraduationCap, Train, Shield, Building, Map, Award, FileText, PlayCircle, Cpu, Activity, Scale, Briefcase, Twitter, Facebook, Instagram, Linkedin, Youtube, Mail, Smartphone, MonitorPlay, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "../../services/supabaseClient";
+
+interface MenuItem {
+  id: string;
+  label: string;
+  path: string;
+  order_index: number;
+  is_active: boolean;
+}
+
+interface MegaMenuCategory {
+  id: string;
+  menu_type: string;
+  category_title: string;
+  icon_name: string;
+  items: string[];
+  order_index: number;
+}
+
+const getIcon = (name: string) => {
+  const icons: Record<string, any> = {
+    Users: <Users size={18} />,
+    Landmark: <Landmark size={18} />,
+    BookOpen: <BookOpen size={18} />,
+    GraduationCap: <GraduationCap size={18} />,
+    Train: <Train size={18} />,
+    Shield: <Shield size={18} />,
+    Cpu: <Cpu size={18} />,
+    Activity: <Activity size={18} />,
+    Briefcase: <Briefcase size={18} />,
+    Scale: <Scale size={18} />,
+    FileText: <FileText size={18} />,
+    PlayCircle: <PlayCircle size={18} />,
+    Building: <Building size={18} />,
+    Map: <Map size={18} />,
+    Award: <Award size={18} />
+  };
+  return icons[name] || <Users size={18} />;
+};
 
 const examCategories = [
   { id: 'SSC Exams', icon: <Users size={18} />, items: ['SSC GD Constable', 'SSC CHSL', 'SSC Selection Post', 'SBI Clerk', 'SBI CBO', 'RBI Assistant', 'SSC JE', 'IBPS SO'] },
@@ -63,11 +102,13 @@ function MegaMenuDropdown({ categories, basePath, offsetClass = 'left-0' }: { ca
         <div className="w-[400px] bg-slate-50 border-l border-gray-200 p-6 flex-shrink-0">
           <div className="grid grid-cols-2 gap-3">
             {categories.find(c => c.id === activeCategory)?.items.map((item: string) => (
-              <Link to={basePath} key={item} className="flex items-center gap-3 bg-white border border-gray-200 p-3 rounded-lg hover:border-[#15b86c] hover:shadow-md transition group/item">
+              <Link to={`${basePath}?search=${encodeURIComponent(item.replace(/<[^>]*>?/gm, ''))}`} key={item} className="flex items-center gap-3 bg-white border border-gray-200 p-3 rounded-lg hover:border-[#15b86c] hover:shadow-md transition group/item">
                 <div className="bg-red-50 p-1.5 rounded-md text-red-500 group-hover/item:bg-[#15b86c]/10 group-hover/item:text-[#15b86c] transition-colors flex-shrink-0">
                   <Award size={16} />
                 </div>
-                <span className="text-sm font-semibold text-gray-700 group-hover/item:text-[#15b86c] transition-colors truncate">{item}</span>
+                <span className="text-sm font-semibold text-gray-700 group-hover/item:text-[#15b86c] transition-colors truncate">
+                  {item.replace(/<[^>]*>?/gm, '')}
+                </span>
               </Link>
             ))}
           </div>
@@ -80,6 +121,31 @@ function MegaMenuDropdown({ categories, basePath, offsetClass = 'left-0' }: { ca
 export default function MainLayout() {
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [dynamicMenu, setDynamicMenu] = useState<MenuItem[]>([]);
+  const [megaMenuData, setMegaMenuData] = useState<MegaMenuCategory[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [navRes, megaRes] = await Promise.all([
+        supabase.from("navigation").select("*").eq("is_active", true).order("order_index", { ascending: true }),
+        supabase.from("mega_menu").select("*").order("order_index", { ascending: true })
+      ]);
+      
+      if (navRes.data) setDynamicMenu(navRes.data);
+      if (megaRes.data) setMegaMenuData(megaRes.data);
+    };
+    fetchData();
+  }, []);
+
+  const getMegaMenuCategories = (type: string) => {
+    return megaMenuData
+      .filter(item => item.menu_type === type)
+      .map(item => ({
+        id: item.category_title,
+        icon: getIcon(item.icon_name),
+        items: item.items
+      }));
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
@@ -106,34 +172,79 @@ export default function MainLayout() {
                 <img src="https://res.cloudinary.com/dbkmzja6c/image/upload/v1773433603/prepdosth_zvc5qm.png" alt="PrepDosth Logo" className="h-8 object-contain" referrerPolicy="no-referrer" />
               </Link>
               <nav className="hidden md:flex space-x-6 text-sm font-semibold text-gray-700 h-full items-center">
-                <Link to="/" className="hover:text-[#15b86c] transition py-5">Home</Link>
-                
-                <div className="relative group h-full flex items-center">
-                  <Link to="/jobs" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">Jobs <ChevronDown size={14} /></Link>
-                  <MegaMenuDropdown categories={jobCategories} basePath="/jobs" offsetClass="left-0" />
-                </div>
-
-                <div className="relative group h-full flex items-center">
-                  <Link to="/exams" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">Exams <ChevronDown size={14} /></Link>
-                  <MegaMenuDropdown categories={examCategories} basePath="/exams" offsetClass="-left-20" />
-                </div>
-
-                <div className="relative group h-full flex items-center">
-                  <Link to="/tests" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">Mock Tests <ChevronDown size={14} /></Link>
-                  <MegaMenuDropdown categories={testCategories} basePath="/tests" offsetClass="-left-40" />
-                </div>
-
-                <div className="relative group h-full flex items-center">
-                  <Link to="/premium" className="hover:text-yellow-600 text-yellow-500 transition flex items-center gap-1 py-5">Premium <ChevronDown size={14} /></Link>
-                  <div className="absolute top-full right-0 w-64 bg-white shadow-xl border border-gray-100 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col py-2">
-                    <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Railway Premium Content</Link>
-                    <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Premium Mock Tests</Link>
-                    <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Paid Courses</Link>
-                  </div>
-                </div>
-
-                <Link to="/about" className="hover:text-[#15b86c] transition py-5">About</Link>
-                <Link to="/contact" className="hover:text-[#15b86c] transition py-5">Contact</Link>
+                {dynamicMenu.length > 0 ? (
+                  dynamicMenu.map((item) => {
+                    // Check if this item should have a MegaMenu
+                    if (item.path === "/jobs") {
+                      const categories = getMegaMenuCategories('jobs');
+                      return (
+                        <div key={item.id} className="relative group h-full flex items-center">
+                          <Link to="/jobs" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">{item.label} <ChevronDown size={14} /></Link>
+                          {categories.length > 0 && <MegaMenuDropdown categories={categories} basePath="/jobs" offsetClass="left-0" />}
+                        </div>
+                      );
+                    }
+                    if (item.path === "/exams") {
+                      const categories = getMegaMenuCategories('exams');
+                      return (
+                        <div key={item.id} className="relative group h-full flex items-center">
+                          <Link to="/exams" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">{item.label} <ChevronDown size={14} /></Link>
+                          {categories.length > 0 && <MegaMenuDropdown categories={categories} basePath="/exams" offsetClass="-left-20" />}
+                        </div>
+                      );
+                    }
+                    if (item.path === "/tests") {
+                      const categories = getMegaMenuCategories('tests');
+                      return (
+                        <div key={item.id} className="relative group h-full flex items-center">
+                          <Link to="/tests" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">{item.label} <ChevronDown size={14} /></Link>
+                          {categories.length > 0 && <MegaMenuDropdown categories={categories} basePath="/tests" offsetClass="-left-40" />}
+                        </div>
+                      );
+                    }
+                    if (item.path === "/premium") {
+                      return (
+                        <div key={item.id} className="relative group h-full flex items-center">
+                          <Link to="/premium" className="hover:text-yellow-600 text-yellow-500 transition flex items-center gap-1 py-5">{item.label} <ChevronDown size={14} /></Link>
+                          <div className="absolute top-full right-0 w-64 bg-white shadow-xl border border-gray-100 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col py-2">
+                            <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Railway Premium Content</Link>
+                            <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Premium Mock Tests</Link>
+                            <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Paid Courses</Link>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <Link key={item.id} to={item.path} className="hover:text-[#15b86c] transition py-5">{item.label}</Link>
+                    );
+                  })
+                ) : (
+                  <>
+                    <Link to="/" className="hover:text-[#15b86c] transition py-5">Home</Link>
+                    <div className="relative group h-full flex items-center">
+                      <Link to="/jobs" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">Jobs <ChevronDown size={14} /></Link>
+                      <MegaMenuDropdown categories={jobCategories} basePath="/jobs" offsetClass="left-0" />
+                    </div>
+                    <div className="relative group h-full flex items-center">
+                      <Link to="/exams" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">Exams <ChevronDown size={14} /></Link>
+                      <MegaMenuDropdown categories={examCategories} basePath="/exams" offsetClass="-left-20" />
+                    </div>
+                    <div className="relative group h-full flex items-center">
+                      <Link to="/tests" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">Mock Tests <ChevronDown size={14} /></Link>
+                      <MegaMenuDropdown categories={testCategories} basePath="/tests" offsetClass="-left-40" />
+                    </div>
+                    <div className="relative group h-full flex items-center">
+                      <Link to="/premium" className="hover:text-yellow-600 text-yellow-500 transition flex items-center gap-1 py-5">Premium <ChevronDown size={14} /></Link>
+                      <div className="absolute top-full right-0 w-64 bg-white shadow-xl border border-gray-100 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col py-2">
+                        <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Railway Premium Content</Link>
+                        <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Premium Mock Tests</Link>
+                        <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Paid Courses</Link>
+                      </div>
+                    </div>
+                    <Link to="/about" className="hover:text-[#15b86c] transition py-5">About</Link>
+                    <Link to="/contact" className="hover:text-[#15b86c] transition py-5">Contact</Link>
+                  </>
+                )}
               </nav>
             </div>
 
@@ -172,13 +283,28 @@ export default function MainLayout() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100 py-4 px-4 space-y-4 shadow-lg absolute w-full left-0">
-            <Link to="/" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Home</Link>
-            <Link to="/jobs" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Jobs</Link>
-            <Link to="/exams" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Exams</Link>
-            <Link to="/tests" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Mock Tests</Link>
-            <Link to="/premium" className="block text-yellow-500 font-semibold hover:text-yellow-600" onClick={() => setIsMobileMenuOpen(false)}>Premium</Link>
-            <Link to="/about" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>About</Link>
-            <Link to="/contact" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Contact</Link>
+            {dynamicMenu.length > 0 ? (
+              dynamicMenu.map((item) => (
+                <Link 
+                  key={item.id} 
+                  to={item.path} 
+                  className={`block font-semibold ${item.path === '/premium' ? 'text-yellow-500 hover:text-yellow-600' : 'text-gray-700 hover:text-[#15b86c]'}`} 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))
+            ) : (
+              <>
+                <Link to="/" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Home</Link>
+                <Link to="/jobs" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Jobs</Link>
+                <Link to="/exams" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Exams</Link>
+                <Link to="/tests" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Mock Tests</Link>
+                <Link to="/premium" className="block text-yellow-500 font-semibold hover:text-yellow-600" onClick={() => setIsMobileMenuOpen(false)}>Premium</Link>
+                <Link to="/about" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>About</Link>
+                <Link to="/contact" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Contact</Link>
+              </>
+            )}
             {user ? (
               <>
                 <Link to={user.role === "admin" ? "/admin" : "/user"} className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</Link>

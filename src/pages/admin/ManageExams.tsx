@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Plus, X } from "lucide-react";
+import { Edit, Trash2, Plus, X, PlayCircle } from "lucide-react";
 import JoditEditor from "jodit-react";
 
-type SectionType = 'text' | 'table';
+type SectionType = 'text' | 'table' | 'text_table';
 
 interface TableData {
   headers: string[];
@@ -14,6 +14,7 @@ interface Section {
   id: string;
   type: SectionType;
   title: string;
+  description?: string;
   content: string;
   tableData?: TableData;
 }
@@ -23,12 +24,26 @@ export default function ManageExams() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentExam, setCurrentExam] = useState<any>({});
   const [sections, setSections] = useState<Section[]>([]);
+  const [status, setStatus] = useState('Confirmed');
+  const [importantDates, setImportantDates] = useState<{ label: string; date: string; icon?: string }[]>([]);
+  const [officialWebsite, setOfficialWebsite] = useState('');
+  const [notificationPdf, setNotificationPdf] = useState('');
+  const [youtubeVideos, setYoutubeVideos] = useState<{ url: string; title: string }[]>([]);
 
   const editor = useRef(null);
   const config = useMemo(() => ({
     readonly: false,
     placeholder: 'Enter content...',
     height: 300,
+    buttons: [
+      'bold', 'italic', 'underline', 'strikethrough', '|',
+      'brush', 'fill', '|',
+      'ul', 'ol', '|',
+      'font', 'fontsize', 'paragraph', '|',
+      'align', '|',
+      'table', 'link', 'image', 'video', '|',
+      'undo', 'redo'
+    ],
     uploader: {
       insertImageAsBase64URI: true
     }
@@ -54,8 +69,15 @@ export default function ManageExams() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Serialize sections to JSON string for description
-    const serializedDescription = JSON.stringify(sections);
+    // Serialize sections, status, and important dates to JSON string for description
+    const serializedDescription = JSON.stringify({
+      sections,
+      status,
+      important_dates: importantDates,
+      official_website: officialWebsite,
+      notification_pdf: notificationPdf,
+      youtube_videos: youtubeVideos
+    });
     const examToSave = { ...currentExam, description: serializedDescription };
 
     let error;
@@ -80,10 +102,29 @@ export default function ManageExams() {
   const handleEdit = (exam: any) => {
     setCurrentExam(exam);
     
-    // Try to parse existing description as JSON sections
+    // Try to parse existing description as JSON
     try {
-      if (exam.description && exam.description.startsWith('[')) {
-        setSections(JSON.parse(exam.description));
+      if (exam.description && (exam.description.startsWith('[') || exam.description.startsWith('{'))) {
+        const parsed = JSON.parse(exam.description);
+        if (Array.isArray(parsed)) {
+          setSections(parsed);
+          setStatus('Confirmed');
+          setImportantDates([]);
+        } else {
+          setSections(parsed.sections || []);
+          setStatus(parsed.status || 'Confirmed');
+          setImportantDates(parsed.important_dates || []);
+          setOfficialWebsite(parsed.official_website || '');
+          setNotificationPdf(parsed.notification_pdf || '');
+          
+          // Handle migration from string array to object array
+          const rawVideos = parsed.youtube_videos || [];
+          const formattedVideos = rawVideos.map((v: any) => {
+            if (typeof v === 'string') return { url: v, title: '' };
+            return v;
+          });
+          setYoutubeVideos(formattedVideos);
+        }
       } else if (exam.description) {
         // Fallback for legacy HTML descriptions
         setSections([{
@@ -115,7 +156,43 @@ export default function ManageExams() {
       { id: Date.now().toString() + '2', type: 'text', title: 'Important Dates', content: '' },
       { id: Date.now().toString() + '3', type: 'table', title: 'Exam Pattern', content: '', tableData: { headers: ['Subject', 'Questions', 'Marks', 'Duration'], rows: [['', '', '', '']] } }
     ]);
+    setStatus('Confirmed');
+    setImportantDates([
+      { label: 'Notification Released', date: new Date().toISOString().split('T')[0], icon: 'Bell' },
+      { label: 'Exam Date', date: '', icon: 'Calendar' }
+    ]);
+    setOfficialWebsite('');
+    setNotificationPdf('');
+    setYoutubeVideos([]);
     setIsEditing(true);
+  };
+
+  const addImportantDate = () => {
+    setImportantDates([...importantDates, { label: '', date: '', icon: 'Clock' }]);
+  };
+
+  const removeImportantDate = (index: number) => {
+    setImportantDates(importantDates.filter((_, i) => i !== index));
+  };
+
+  const updateImportantDate = (index: number, field: 'label' | 'date' | 'icon', value: string) => {
+    const newDates = [...importantDates];
+    (newDates[index] as any)[field] = value;
+    setImportantDates(newDates);
+  };
+
+  const addYoutubeVideo = () => {
+    setYoutubeVideos([...youtubeVideos, { url: '', title: '' }]);
+  };
+
+  const updateYoutubeVideo = (index: number, field: 'url' | 'title', value: string) => {
+    const newVideos = [...youtubeVideos];
+    newVideos[index][field] = value;
+    setYoutubeVideos(newVideos);
+  };
+
+  const removeYoutubeVideo = (index: number) => {
+    setYoutubeVideos(youtubeVideos.filter((_, i) => i !== index));
   };
 
   const addSection = (type: SectionType) => {
@@ -123,8 +200,9 @@ export default function ManageExams() {
       id: Date.now().toString(),
       type,
       title: 'New Section',
+      description: '',
       content: '',
-      ...(type === 'table' ? { tableData: { headers: ['Column 1', 'Column 2'], rows: [['', '']] } } : {})
+      ...(type === 'table' || type === 'text_table' ? { tableData: { headers: ['Column 1', 'Column 2'], rows: [['', '']] } } : {})
     };
     setSections([...sections, newSection]);
   };
@@ -229,13 +307,135 @@ export default function ManageExams() {
               <label className="block text-sm font-medium text-gray-700">Exam Date</label>
               <input type="date" placeholder="Date" value={currentExam.date ? new Date(currentExam.date).toISOString().split('T')[0] : ""} onChange={e => setCurrentExam({...currentExam, date: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" required />
             </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Exam Status</label>
+              <select 
+                value={status} 
+                onChange={e => setStatus(e.target.value)}
+                className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              >
+                <option value="Confirmed">Confirmed</option>
+                <option value="Expected">Expected</option>
+              </select>
+            </div>
+
+            <div className="md:col-span-2 space-y-4 bg-blue-50 p-6 rounded-xl border border-blue-100">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-blue-800">Custom Important Dates</h3>
+                <button type="button" onClick={addImportantDate} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center gap-1">
+                  <Plus size={16}/> Add Date
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {importantDates.map((date, idx) => (
+                  <div key={idx} className="flex gap-2 items-end bg-white p-3 rounded-lg border border-blue-200 shadow-sm">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Label</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Admit Card" 
+                        value={date.label} 
+                        onChange={e => updateImportantDate(idx, 'label', e.target.value)}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Date</label>
+                      <input 
+                        type="date" 
+                        value={date.date} 
+                        onChange={e => updateImportantDate(idx, 'date', e.target.value)}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Icon</label>
+                      <select 
+                        value={date.icon || 'Clock'} 
+                        onChange={e => updateImportantDate(idx, 'icon', e.target.value)}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white"
+                      >
+                        <option value="Bell">Bell (Notification)</option>
+                        <option value="Calendar">Calendar (Exam)</option>
+                        <option value="FileText">File (Admit Card)</option>
+                        <option value="CheckCircle2">Check (Result)</option>
+                        <option value="Clock">Clock (General)</option>
+                      </select>
+                    </div>
+                    <button type="button" onClick={() => removeImportantDate(idx)} className="text-red-500 hover:text-red-700 p-2">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
             
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Official Website</label>
+              <input type="text" placeholder="https://..." value={officialWebsite} onChange={e => setOfficialWebsite(e.target.value)} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Notification PDF Link</label>
+              <input type="text" placeholder="https://..." value={notificationPdf} onChange={e => setNotificationPdf(e.target.value)} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+
+            <div className="md:col-span-2 space-y-4 bg-red-50 p-6 rounded-xl border border-red-100">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-red-800 flex items-center gap-2">
+                  <PlayCircle size={20} /> YouTube Videos
+                </h3>
+                <button type="button" onClick={addYoutubeVideo} className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-700 transition flex items-center gap-1">
+                  <Plus size={16}/> Add Video
+                </button>
+              </div>
+              <div className="space-y-4">
+                {youtubeVideos.map((video, idx) => (
+                  <div key={idx} className="bg-white p-4 rounded-lg border border-red-200 shadow-sm space-y-3">
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-bold text-red-600 uppercase">Video #{idx + 1}</span>
+                      <button type="button" onClick={() => removeYoutubeVideo(idx)} className="text-red-500 hover:text-red-700">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Video Title</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. Best Preparation Strategy" 
+                          value={video.title} 
+                          onChange={e => updateYoutubeVideo(idx, 'title', e.target.value)}
+                          className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-red-500 outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-gray-500 uppercase">YouTube URL</label>
+                        <input 
+                          type="text" 
+                          placeholder="https://www.youtube.com/watch?v=..." 
+                          value={video.url} 
+                          onChange={e => updateYoutubeVideo(idx, 'url', e.target.value)}
+                          className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-red-500 outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {youtubeVideos.length === 0 && (
+                  <p className="text-sm text-red-400 italic">No videos added yet.</p>
+                )}
+              </div>
+            </div>
+
             <div className="md:col-span-2 space-y-6 mt-4">
               <div className="flex justify-between items-center border-b pb-2">
                 <h3 className="text-lg font-bold text-gray-800">Content Sections</h3>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => addSection('text')} className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-100 transition flex items-center gap-1"><Plus size={16}/> Text Section</button>
                   <button type="button" onClick={() => addSection('table')} className="bg-green-50 text-green-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-100 transition flex items-center gap-1"><Plus size={16}/> Table Section</button>
+                  <button type="button" onClick={() => addSection('text_table')} className="bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-purple-100 transition flex items-center gap-1"><Plus size={16}/> Text+Table Section</button>
                 </div>
               </div>
 
@@ -254,9 +454,18 @@ export default function ManageExams() {
                       className="border p-2 rounded-lg w-full md:w-1/2 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
+                  <div className="mb-4 pr-8">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Section Description</label>
+                    <input 
+                      type="text" 
+                      value={section.description || ''} 
+                      onChange={(e) => updateSection(section.id, { description: e.target.value })}
+                      className="border p-2 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
 
-                  {section.type === 'text' ? (
-                    <div>
+                  {section.type === 'text' || section.type === 'text_table' ? (
+                    <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
                       <JoditEditor
                         value={section.content}
@@ -264,7 +473,9 @@ export default function ManageExams() {
                         onBlur={newContent => updateSection(section.id, { content: newContent })}
                       />
                     </div>
-                  ) : (
+                  ) : null}
+                  
+                  {section.type === 'table' || section.type === 'text_table' ? (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Table Data</label>
                       <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
@@ -314,7 +525,7 @@ export default function ManageExams() {
                         <Plus size={16} /> Add Row
                       </button>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>

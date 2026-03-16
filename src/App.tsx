@@ -30,6 +30,8 @@ import ManageExams from "./pages/admin/ManageExams";
 import ManageTests from "./pages/admin/ManageTests";
 import ManageHome from "./pages/admin/ManageHome";
 import ManageNotifications from "./pages/admin/ManageNotifications";
+import ManageMenu from "./pages/admin/ManageMenu";
+import ManageMegaMenu from "./pages/admin/ManageMegaMenu";
 
 // User Pages
 import UserDashboard from "./pages/user/Dashboard";
@@ -87,6 +89,8 @@ export default function App() {
             <Route path="tests" element={<ManageTests />} />
             <Route path="home" element={<ManageHome />} />
             <Route path="notifications" element={<ManageNotifications />} />
+            <Route path="menu" element={<ManageMenu />} />
+            <Route path="mega-menu" element={<ManageMegaMenu />} />
           </Route>
         </Routes>
       </Router>

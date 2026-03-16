@@ -42,6 +42,44 @@ export default function Exams() {
     return matchesFilter && matchesSearch;
   });
 
+  const getCleanDescription = (description: string) => {
+    if (!description) return "";
+    
+    let cleanText = "";
+    try {
+      const trimmed = description.trim();
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        const parsed = JSON.parse(trimmed);
+        const sections = Array.isArray(parsed) ? parsed : (parsed.sections || []);
+        cleanText = sections
+          .filter((sec: any) => sec.type === 'text')
+          .map((sec: any) => sec.content)
+          .join(" ");
+      } else {
+        cleanText = description;
+      }
+    } catch (e) {
+      cleanText = description;
+    }
+
+    // Strip HTML tags
+    cleanText = cleanText.replace(/<[^>]*>?/gm, '');
+    
+    // Decode HTML entities (basic ones)
+    cleanText = cleanText
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"');
+
+    // Truncate
+    if (cleanText.length > 160) {
+      return cleanText.substring(0, 157) + "...";
+    }
+    return cleanText;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -80,7 +118,7 @@ export default function Exams() {
         {filteredExams.length > 0 ? filteredExams.map(exam => (
           <div key={exam.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition duration-300 flex flex-col">
             <h2 className="text-2xl font-bold text-blue-700 mb-2">{exam.title}</h2>
-            <p className="text-gray-600 font-medium mb-4 flex-grow">{exam.description}</p>
+            <p className="text-gray-600 font-medium mb-4 flex-grow line-clamp-3">{getCleanDescription(exam.description)}</p>
             
             <div className="space-y-2 text-sm text-gray-700 mb-6">
               <div className="flex justify-between border-b border-gray-50 pb-1">

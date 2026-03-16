@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { Calendar, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, BookOpen, PlayCircle, Download } from 'lucide-react';
+import { Calendar, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, BookOpen, PlayCircle, Download, Bell, Play, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function ExamDetails() {
@@ -9,6 +9,7 @@ export default function ExamDetails() {
   const [exam, setExam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchExam = async () => {
@@ -20,48 +21,60 @@ export default function ExamDetails() {
     fetchExam();
   }, [id]);
 
-  const { toc, sections } = React.useMemo(() => {
-    if (!exam?.description) return { toc: [], sections: [] };
+  const { toc, sections, status, customDates, officialWebsite, notificationPdf, youtubeVideos } = React.useMemo(() => {
+    if (!exam?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialWebsite: '', notificationPdf: '', youtubeVideos: [] };
     
     const generatedToc: { id: string, text: string }[] = [];
-    const generatedSections: { id: string, title: string, content: string }[] = [];
+    const generatedSections: any[] = [];
+    let examStatus = 'Confirmed';
+    let examCustomDates: { label: string, date: string, icon?: string }[] = [];
+    let examOfficialWebsite = '';
+    let examNotificationPdf = '';
+    let examYoutubeVideos: { url: string, title: string }[] = [];
 
     try {
-      if (exam.description.trim().startsWith('[')) {
-        const parsedData = JSON.parse(exam.description);
+      const trimmedDesc = exam.description.trim();
+      if (trimmedDesc.startsWith('[') || trimmedDesc.startsWith('{')) {
+        const parsedData = JSON.parse(trimmedDesc);
         
-        parsedData.forEach((sec: any) => {
-          let contentHtml = '';
-          if (sec.type === 'text') {
-            contentHtml = sec.content;
-          } else if (sec.type === 'table' && sec.tableData) {
-            contentHtml = `<div class="overflow-x-auto my-6"><table class="w-full border-collapse border border-gray-200">
-              <thead>
-                <tr class="bg-gray-100 text-gray-700">
-                  ${sec.tableData.headers.map((h: string) => `<th class="border border-gray-200 p-3 text-left font-semibold">${h}</th>`).join('')}
-                </tr>
-              </thead>
-              <tbody>
-                ${sec.tableData.rows.map((row: string[]) => `
-                  <tr class="hover:bg-gray-50">
-                    ${row.map((cell: string) => `<td class="border border-gray-200 p-3 text-gray-600">${cell}</td>`).join('')}
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table></div>`;
-          }
+        const sectionsToProcess = Array.isArray(parsedData) ? parsedData : (parsedData.sections || []);
+        if (!Array.isArray(parsedData)) {
+          examStatus = parsedData.status || 'Confirmed';
+          examCustomDates = parsedData.important_dates || [];
+          examOfficialWebsite = parsedData.official_website || '';
+          examNotificationPdf = parsedData.notification_pdf || '';
           
+          // Handle both legacy string array and new object array
+          const rawVideos = parsedData.youtube_videos || [];
+          examYoutubeVideos = rawVideos.map((v: any) => {
+            if (typeof v === 'string') return { url: v, title: 'Preparation Video' };
+            return v;
+          });
+        }
+
+        sectionsToProcess.forEach((sec: any) => {
           const id = sec.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
           generatedToc.push({ id, text: sec.title });
           
           generatedSections.push({
-            id,
-            title: sec.title,
-            content: contentHtml
+            ...sec,
+            id
           });
         });
         
-        return { toc: generatedToc, sections: generatedSections };
+        if (examYoutubeVideos.length > 0) {
+          generatedToc.push({ id: 'videos', text: 'Preparation Videos' });
+        }
+        
+        return { 
+          toc: generatedToc, 
+          sections: generatedSections, 
+          status: examStatus, 
+          customDates: examCustomDates,
+          officialWebsite: examOfficialWebsite,
+          notificationPdf: examNotificationPdf,
+          youtubeVideos: examYoutubeVideos
+        };
       }
     } catch (e) {
       console.error("Failed to parse JSON description, falling back to HTML", e);
@@ -120,7 +133,15 @@ export default function ExamDetails() {
       generatedToc.unshift({ id: 'overview', text: 'Overview' });
     }
     
-    return { toc: generatedToc, sections: generatedSections };
+    return { 
+      toc: generatedToc, 
+      sections: generatedSections, 
+      status: 'Confirmed', 
+      customDates: [],
+      officialWebsite: '',
+      notificationPdf: '',
+      youtubeVideos: []
+    };
   }, [exam?.description]);
 
   if (loading) {
@@ -170,6 +191,9 @@ export default function ExamDetails() {
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
           <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
+            <div className="hidden md:block w-64 shrink-0">
+              <img src="https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png" alt="Hero Illustration" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+            </div>
             <div className="flex-1">
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight">
                 {exam.title} Notification, Exam Date Out, Vacancy, Selection and Eligibility Criteria
@@ -189,9 +213,6 @@ export default function ExamDetails() {
                   </a>
                 )}
               </div>
-            </div>
-            <div className="hidden md:block w-64 shrink-0">
-              <img src="https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png" alt="Hero Illustration" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
             </div>
           </div>
         </div>
@@ -230,27 +251,54 @@ export default function ExamDetails() {
               <div className="space-y-6">
                 {sections.map((section) => (
                   <div key={section.id} id={section.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 scroll-mt-32">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">
                       {section.title}
                     </h2>
-                    <div 
-                      className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed
-                                 prose-headings:font-bold prose-headings:text-gray-900
-                                 prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3
-                                 prose-p:mb-4
-                                 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
-                                 prose-table:w-full prose-table:border-collapse prose-table:border prose-table:border-gray-300
-                                 prose-th:bg-gray-100 prose-th:border prose-th:border-gray-300 prose-th:p-3 prose-th:text-left prose-th:font-bold
-                                 prose-td:border prose-td:border-gray-300 prose-td:p-3
-                                 prose-ul:list-disc prose-ul:pl-5 prose-ul:mb-4
-                                 prose-li:mb-1"
-                      dangerouslySetInnerHTML={{ __html: section.content }}
-                    />
+                    {section.description && <p className="text-gray-600 mb-4">{section.description}</p>}
+                    
+                    {(section.type === 'text' || section.type === 'text_table') && (
+                      <div 
+                        className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed
+                                   prose-headings:font-bold prose-headings:text-gray-900
+                                   prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3
+                                   prose-p:mb-4
+                                   prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+                                   prose-table:w-full prose-table:border-collapse prose-table:border prose-table:border-gray-300
+                                   prose-th:bg-gray-100 prose-th:border prose-th:border-gray-300 prose-th:p-3 prose-th:text-left prose-th:font-bold
+                                   prose-td:border prose-td:border-gray-300 prose-td:p-3
+                                   prose-ul:list-disc prose-ul:pl-5 prose-ul:mb-4
+                                   prose-li:mb-1"
+                        dangerouslySetInnerHTML={{ __html: section.content }}
+                      />
+                    )}
+
+                    {(section.type === 'table' || section.type === 'text_table') && section.tableData && (
+                      <div className="overflow-x-auto mt-4">
+                        <table className="min-w-full border-collapse border border-gray-200">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              {section.tableData.headers.map((header, i) => (
+                                <th key={i} className="border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-700">{header}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {section.tableData.rows.map((row, i) => (
+                              <tr key={i}>
+                                {row.map((cell, j) => (
+                                  <td key={j} className="border border-gray-200 px-4 py-3 text-sm text-gray-700">{cell}</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             ) : (
-              <>
+              <div className="space-y-6">
                 {/* Overview Section */}
                 <div id="overview" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32">
                   <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">
@@ -261,75 +309,145 @@ export default function ExamDetails() {
                   </div>
                 </div>
 
-            {/* Eligibility Section */}
-            <div id="eligibility" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">
-                Eligibility Criteria
-              </h2>
-              <p className="text-gray-700 mb-4">Candidates must fulfill the following eligibility criteria to apply for the exam:</p>
-              <ul className="list-disc pl-5 text-gray-700 space-y-2">
-                <li>Must be a citizen of India.</li>
-                <li>Must possess a Bachelor's degree from a recognized university.</li>
-                <li>Age limit varies by post, generally between 18 to 32 years.</li>
-              </ul>
-            </div>
+                {/* Eligibility Section */}
+                <div id="eligibility" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">
+                    Eligibility Criteria
+                  </h2>
+                  <p className="text-gray-700 mb-4">Candidates must fulfill the following eligibility criteria to apply for the exam:</p>
+                  <ul className="list-disc pl-5 text-gray-700 space-y-2">
+                    <li>Must be a citizen of India.</li>
+                    <li>Must possess a Bachelor's degree from a recognized university.</li>
+                    <li>Age limit varies by post, generally between 18 to 32 years.</li>
+                  </ul>
+                </div>
 
-            {/* Exam Pattern Section */}
-            <div id="exam-pattern" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">
-                Exam Pattern
-              </h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse border border-gray-200">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-700">Subject</th>
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-700">Questions</th>
-                      <th className="border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-700">Marks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">General Intelligence & Reasoning</td>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">25</td>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">50</td>
-                    </tr>
-                    <tr>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">General Awareness</td>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">25</td>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">50</td>
-                    </tr>
-                    <tr>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">Quantitative Aptitude</td>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">25</td>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">50</td>
-                    </tr>
-                    <tr>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">English Comprehension</td>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">25</td>
-                      <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">50</td>
-                    </tr>
-                  </tbody>
-                </table>
+                {/* Exam Pattern Section */}
+                <div id="exam-pattern" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">
+                    Exam Pattern
+                  </h2>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-collapse border border-gray-200">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-700">Subject</th>
+                          <th className="border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-700">Questions</th>
+                          <th className="border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-700">Marks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">General Intelligence & Reasoning</td>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">25</td>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">50</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">General Awareness</td>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">25</td>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">50</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">Quantitative Aptitude</td>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">25</td>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">50</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">English Comprehension</td>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">25</td>
+                          <td className="border border-gray-200 px-4 py-3 text-sm text-gray-700">50</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Syllabus Section */}
-            <div id="syllabus" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">
-                Syllabus
-              </h2>
-              <p className="text-gray-700 mb-4">The detailed syllabus will be updated soon based on the official notification.</p>
-            </div>
+            {/* YouTube Videos Section */}
+            {youtubeVideos && youtubeVideos.length > 0 && (
+              <div id="videos" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4 flex items-center gap-2">
+                  <PlayCircle className="text-red-600" /> Preparation Videos
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {youtubeVideos.map((video, idx) => {
+                    const url = video.url;
+                    let videoId = '';
+                    try {
+                      if (url.includes('v=')) {
+                        videoId = url.split('v=')[1].split('&')[0];
+                      } else if (url.includes('be/')) {
+                        videoId = url.split('be/')[1].split('?')[0];
+                      }
+                    } catch (e) {
+                      console.error("Invalid YouTube URL", url);
+                    }
 
-            {/* Salary Section */}
-            <div id="salary" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4">
-                Salary & Perks
-              </h2>
-              <p className="text-gray-700 mb-4">The salary structure varies by post. Selected candidates will be eligible for basic pay along with DA, HRA, and other allowances as per government rules.</p>
-            </div>
-            </>
+                    if (!videoId) return null;
+
+                    return (
+                      <div 
+                        key={idx} 
+                        className="group cursor-pointer relative"
+                        onClick={() => setSelectedVideo(videoId)}
+                      >
+                        <div className="relative aspect-video rounded-xl overflow-hidden shadow-sm border border-gray-100 mb-3">
+                          <img 
+                            src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`} 
+                            alt={video.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                              <Play size={32} className="text-white fill-white ml-1" />
+                            </div>
+                          </div>
+                          {/* Static play button for mobile/always visible */}
+                          <div className="absolute inset-0 flex items-center justify-center group-hover:hidden transition-opacity">
+                            <div className="w-12 h-12 bg-blue-600/90 rounded-full flex items-center justify-center shadow-lg">
+                              <Play size={24} className="text-white fill-white ml-1" />
+                            </div>
+                          </div>
+                        </div>
+                        <h4 className="font-bold text-gray-900 text-sm line-clamp-2 mb-1 group-hover:text-blue-600 transition-colors">
+                          {video.title || "Preparation Video"}
+                        </h4>
+                        <p className="text-xs text-gray-500">PrepDosth - Exam Prep</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Video Modal */}
+            {selectedVideo && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedVideo(null);
+                    }}
+                    className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors border border-white/20"
+                  >
+                    <X size={24} />
+                  </button>
+                  <iframe 
+                    width="100%" 
+                    height="100%" 
+                    src={`https://www.youtube.com/embed/${selectedVideo}?autoplay=1`} 
+                    title="YouTube video player" 
+                    frameBorder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    allowFullScreen
+                  ></iframe>
+                </div>
+                {/* Click outside to close */}
+                <div className="absolute inset-0 -z-10" onClick={() => setSelectedVideo(null)}></div>
+              </div>
             )}
 
           </div>
@@ -346,6 +464,69 @@ export default function ExamDetails() {
               </button>
             </div>
 
+            {/* Important Dates Card */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <Calendar size={20} className="text-[#15b86c]" /> Important Dates
+                </h3>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="relative pl-8 border-l-2 border-gray-200 space-y-8">
+                  {customDates.length > 0 ? (
+                    customDates.map((d, i) => (
+                      <div key={i} className="relative">
+                        <div className={`absolute -left-[45px] w-8 h-8 rounded-full border-4 border-white flex items-center justify-center shadow-sm ${i === 0 ? 'bg-[#15b86c]' : 'bg-blue-500'}`}>
+                          {d.icon === 'Bell' ? <Bell size={14} className="text-white" /> : 
+                           d.icon === 'Calendar' ? <Calendar size={14} className="text-white" /> :
+                           d.icon === 'FileText' ? <FileText size={14} className="text-white" /> :
+                           d.icon === 'CheckCircle2' ? <CheckCircle2 size={14} className="text-white" /> :
+                           d.icon === 'Clock' ? <Clock size={14} className="text-white" /> :
+                           // Fallback to text-based matching if icon is not explicitly set
+                           d.label.toLowerCase().includes('notification') ? <Bell size={14} className="text-white" /> : 
+                           d.label.toLowerCase().includes('exam') ? <Calendar size={14} className="text-white" /> :
+                           d.label.toLowerCase().includes('admit') ? <FileText size={14} className="text-white" /> :
+                           d.label.toLowerCase().includes('result') ? <CheckCircle2 size={14} className="text-white" /> :
+                           <Clock size={14} className="text-white" />}
+                        </div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm text-gray-500 font-medium">{d.label}</p>
+                          {d.label.toLowerCase().includes('exam date') && (
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${status === 'Confirmed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                              {status}
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-bold text-gray-900">{d.date ? format(new Date(d.date), 'dd MMM yyyy') : 'TBA'}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <div className="absolute -left-[45px] bg-[#15b86c] w-8 h-8 rounded-full border-4 border-white flex items-center justify-center shadow-sm">
+                          <Bell size={14} className="text-white" />
+                        </div>
+                        <p className="text-sm text-gray-500 font-medium mb-1">Notification Released</p>
+                        <p className="font-bold text-gray-900">{format(new Date(exam.created_at), 'dd MMM yyyy')}</p>
+                      </div>
+                      <div className="relative">
+                        <div className="absolute -left-[45px] bg-blue-500 w-8 h-8 rounded-full border-4 border-white flex items-center justify-center shadow-sm">
+                          <Calendar size={14} className="text-white" />
+                        </div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm text-gray-500 font-medium">Exam Date</p>
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${status === 'Confirmed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                            {status}
+                          </span>
+                        </div>
+                        <p className="font-bold text-gray-900">{format(new Date(exam.date), 'dd MMM yyyy')}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Important Links */}
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
               <h3 className="font-bold text-gray-900 p-4 border-b border-gray-200 bg-gray-50">Important Links</h3>
@@ -359,26 +540,32 @@ export default function ExamDetails() {
               </div>
             </div>
 
-            {/* Important Dates Card */}
+            {/* Official Links */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
                 <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                  <Calendar size={20} className="text-[#15b86c]" /> Important Dates
+                  <ExternalLink size={20} className="text-[#15b86c]" /> Official Resources
                 </h3>
               </div>
-              <div className="p-6 space-y-6">
-                <div className="relative pl-6 border-l-2 border-gray-200 space-y-6">
-                  <div className="relative">
-                    <div className="absolute -left-[31px] bg-[#15b86c] w-4 h-4 rounded-full border-4 border-white"></div>
-                    <p className="text-sm text-gray-500 font-medium mb-1">Notification Released</p>
-                    <p className="font-bold text-gray-900">{format(new Date(exam.created_at), 'dd MMM yyyy')}</p>
-                  </div>
-                  <div className="relative">
-                    <div className="absolute -left-[31px] bg-blue-500 w-4 h-4 rounded-full border-4 border-white"></div>
-                    <p className="text-sm text-gray-500 font-medium mb-1">Exam Date</p>
-                    <p className="font-bold text-gray-900">{format(new Date(exam.date), 'dd MMM yyyy')}</p>
-                  </div>
-                </div>
+              <div className="p-4 space-y-3">
+                {officialWebsite && (
+                  <a href={officialWebsite} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition font-medium text-sm">
+                    Official Website
+                    <ExternalLink size={16} />
+                  </a>
+                )}
+                {notificationPdf && (
+                  <a href={notificationPdf} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition font-medium text-sm">
+                    Notification PDF
+                    <Download size={16} />
+                  </a>
+                )}
+                {!officialWebsite && !notificationPdf && exam.link && (
+                  <a href={exam.link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition font-medium text-sm">
+                    Official Link
+                    <ExternalLink size={16} />
+                  </a>
+                )}
               </div>
             </div>
 
