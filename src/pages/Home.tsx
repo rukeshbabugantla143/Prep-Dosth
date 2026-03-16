@@ -80,6 +80,7 @@ export default function Home() {
               src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
               alt="Students studying" 
               className="rounded-2xl shadow-2xl border-4 border-white/10 relative z-10 object-cover h-[400px] w-full"
+              referrerPolicy="no-referrer"
             />
           </div>
         </div>
@@ -337,6 +338,7 @@ export default function Home() {
               src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
               alt="Pass Pro" 
               className="rounded-2xl shadow-2xl relative z-10 border border-gray-700"
+              referrerPolicy="no-referrer"
             />
           </div>
         </div>

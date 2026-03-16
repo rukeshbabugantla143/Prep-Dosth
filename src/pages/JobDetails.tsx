@@ -198,7 +198,7 @@ export default function JobDetails() {
               </div>
             </div>
             <div className="hidden md:block w-64 shrink-0">
-              <img src="https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png" alt="Hero Illustration" className="w-full h-auto object-contain" />
+              <img src="https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png" alt="Hero Illustration" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
             </div>
           </div>
         </div>
