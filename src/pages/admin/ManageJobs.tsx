@@ -3,6 +3,7 @@ import { supabase } from "../../services/supabaseClient";
 import { Edit, Trash2, Plus, X, Link as LinkIcon, ArrowUp, ArrowDown, Bold, GripVertical } from "lucide-react";
 import JoditEditor from "jodit-react";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import ImageUpload from "../../components/common/ImageUpload";
 import {
   DndContext,
   closestCenter,
@@ -127,6 +128,10 @@ function SortableImportantDate({
           <option value="FileText">File (Admit Card)</option>
           <option value="CheckCircle2">Check (Result)</option>
           <option value="Clock">Clock (General)</option>
+          <option value="Download">Download</option>
+          <option value="Link">Link</option>
+          <option value="AlertCircle">Alert</option>
+          <option value="Info">Info</option>
         </select>
       </div>
       <button type="button" onClick={() => removeImportantDate(idx)} className="text-red-500 hover:text-red-700 p-2">
@@ -231,6 +236,7 @@ export default function ManageJobs() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentJob, setCurrentJob] = useState<any>({});
   const [sections, setSections] = useState<Section[]>([]);
+  const [logoUrl, setLogoUrl] = useState('');
   const [importantDates, setImportantDates] = useState<{ label: string; date: string; icon?: string; status?: string }[]>([]);
   const [officialLinks, setOfficialLinks] = useState<{ label: string; url: string; color?: string }[]>([]);
   const [notificationLinks, setNotificationLinks] = useState<{ label: string; url: string; color?: string }[]>([]);
@@ -338,7 +344,8 @@ export default function ManageJobs() {
       sections,
       important_dates: importantDates,
       official_links: officialLinks,
-      notification_links: notificationLinks
+      notification_links: notificationLinks,
+      logo_url: logoUrl
     });
     const jobToSave = { 
       ...currentJob, 
@@ -363,6 +370,7 @@ export default function ManageJobs() {
     setIsEditing(false);
     setCurrentJob({});
     setSections([]);
+    setLogoUrl('');
     setImportantDates([]);
     setOfficialLinks([]);
     setNotificationLinks([]);
@@ -382,6 +390,7 @@ export default function ManageJobs() {
         } else {
           setSections(parsed.sections || []);
           setImportantDates(parsed.important_dates || []);
+          setLogoUrl(parsed.logo_url || '');
 
           // Handle migration for official links
           if (parsed.official_links) {
@@ -585,6 +594,13 @@ export default function ManageJobs() {
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Job Title</label>
               <input type="text" placeholder="e.g. SSC CGL 2024" value={currentJob.title || ""} onChange={e => setCurrentJob({...currentJob, title: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" required />
+            </div>
+            <div className="space-y-2">
+              <ImageUpload 
+                label="Job Logo" 
+                currentImage={logoUrl} 
+                onUploadSuccess={(url) => setLogoUrl(url)} 
+              />
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Department / Category</label>

@@ -3,6 +3,7 @@ import { supabase } from "../../services/supabaseClient";
 import { Edit, Trash2, Plus, X, PlayCircle, Copy, Link as LinkIcon, ArrowUp, ArrowDown, Bold, GripVertical } from "lucide-react";
 import JoditEditor from "jodit-react";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import ImageUpload from "../../components/common/ImageUpload";
 import {
   DndContext,
   closestCenter,
@@ -127,6 +128,10 @@ function SortableImportantDate({
           <option value="FileText">File (Admit Card)</option>
           <option value="CheckCircle2">Check (Result)</option>
           <option value="Clock">Clock (General)</option>
+          <option value="Download">Download</option>
+          <option value="Link">Link</option>
+          <option value="AlertCircle">Alert</option>
+          <option value="Info">Info</option>
         </select>
       </div>
       <button type="button" onClick={() => removeImportantDate(idx)} className="text-red-500 hover:text-red-700 p-2">
@@ -233,6 +238,7 @@ export default function ManageExams() {
   const [currentExam, setCurrentExam] = useState<any>({});
   const [sections, setSections] = useState<Section[]>([]);
   const [status, setStatus] = useState('Confirmed');
+  const [logoUrl, setLogoUrl] = useState('');
   const [importantDates, setImportantDates] = useState<{ label: string; date: string; icon?: string; status?: string }[]>([]);
   const [officialLinks, setOfficialLinks] = useState<{ label: string; url: string; color?: string }[]>([]);
   const [notificationLinks, setNotificationLinks] = useState<{ label: string; url: string; color?: string }[]>([]);
@@ -343,7 +349,8 @@ export default function ManageExams() {
       important_dates: importantDates,
       official_links: officialLinks,
       notification_links: notificationLinks,
-      youtube_videos: youtubeVideos
+      youtube_videos: youtubeVideos,
+      logo_url: logoUrl
     });
     const examToSave = { ...currentExam, description: serializedDescription };
 
@@ -363,6 +370,7 @@ export default function ManageExams() {
     setIsEditing(false);
     setCurrentExam({});
     setSections([]);
+    setLogoUrl('');
     fetchExams();
   };
 
@@ -381,6 +389,7 @@ export default function ManageExams() {
           setSections(parsed.sections || []);
           setStatus(parsed.status || 'Confirmed');
           setImportantDates(parsed.important_dates || []);
+          setLogoUrl(parsed.logo_url || '');
           
           // Handle migration for official links
           if (parsed.official_links) {
@@ -450,6 +459,7 @@ export default function ManageExams() {
           setSections(parsed.sections || []);
           setStatus(parsed.status || 'Confirmed');
           setImportantDates(parsed.important_dates || []);
+          setLogoUrl(parsed.logo_url || '');
           
           // Handle migration for official links
           if (parsed.official_links) {
@@ -689,6 +699,13 @@ export default function ManageExams() {
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Exam Title</label>
               <input placeholder="e.g. ECET 2026" value={currentExam.title || ""} onChange={e => setCurrentExam({...currentExam, title: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" required />
+            </div>
+            <div className="space-y-2">
+              <ImageUpload 
+                label="Exam Logo" 
+                currentImage={logoUrl} 
+                onUploadSuccess={(url) => setLogoUrl(url)} 
+              />
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Category</label>

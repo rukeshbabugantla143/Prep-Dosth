@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { Building2, Users, GraduationCap, Calendar, IndianRupee, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, PlayCircle, Download, Bell } from 'lucide-react';
+import { slugify } from '../utils';
+import { Building2, Users, GraduationCap, Calendar, IndianRupee, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, PlayCircle, Download, Bell, Link as LinkIcon, AlertCircle, Info } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function JobDetails() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -13,25 +14,28 @@ export default function JobDetails() {
 
   useEffect(() => {
     const fetchJob = async () => {
-      const { data, error } = await supabase.from('jobs').select('*').eq('id', id).single();
+      const { data, error } = await supabase.from('jobs').select('*');
       if (data) {
-        setJob(data);
-        // Fetch important links for this job
-        const { data: linksData } = await supabase
-          .from('important_links')
-          .select('*')
-          .eq('job_id', data.id)
-          .order('order_index', { ascending: true });
-        if (linksData) setImportantLinks(linksData);
+        const job = data.find(j => slugify(j.title) === slug);
+        setJob(job);
+        if (job) {
+          // Fetch important links for this job
+          const { data: linksData } = await supabase
+            .from('important_links')
+            .select('*')
+            .eq('job_id', job.id)
+            .order('order_index', { ascending: true });
+          if (linksData) setImportantLinks(linksData);
+        }
       }
       if (error) console.error("Error fetching job details:", error);
       setLoading(false);
     };
     fetchJob();
-  }, [id]);
+  }, [slug]);
 
-  const { toc, sections, status, customDates, officialLinks, notificationLinks } = React.useMemo(() => {
-    if (!job?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [] };
+  const { toc, sections, status, customDates, officialLinks, notificationLinks, logoUrl } = React.useMemo(() => {
+    if (!job?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [], logoUrl: '' };
     
     const generatedToc: { id: string, text: string }[] = [];
     const generatedSections: any[] = [];
@@ -39,6 +43,7 @@ export default function JobDetails() {
     let jobCustomDates: { label: string, date: string, icon?: string, status?: string }[] = [];
     let jobOfficialLinks: { label: string, url: string, color?: string }[] = [];
     let jobNotificationLinks: { label: string, url: string, color?: string }[] = [];
+    let jobLogoUrl = '';
 
     try {
       const trimmedDesc = job.description.trim();
@@ -49,6 +54,7 @@ export default function JobDetails() {
         if (!Array.isArray(parsedData)) {
           jobStatus = parsedData.status || 'Confirmed';
           jobCustomDates = parsedData.important_dates || [];
+          jobLogoUrl = parsedData.logo_url || '';
           
           // Handle multiple links
           if (parsedData.official_links) {
@@ -84,7 +90,8 @@ export default function JobDetails() {
           status: jobStatus, 
           customDates: jobCustomDates,
           officialLinks: jobOfficialLinks,
-          notificationLinks: jobNotificationLinks
+          notificationLinks: jobNotificationLinks,
+          logoUrl: jobLogoUrl
         };
       }
     } catch (e) {
@@ -150,7 +157,8 @@ export default function JobDetails() {
       status: 'Confirmed',
       customDates: [],
       officialLinks: job.applyLink ? [{ label: 'Apply Online', url: job.applyLink }] : [],
-      notificationLinks: job.pdfLink ? [{ label: 'Notification PDF', url: job.pdfLink }] : []
+      notificationLinks: job.pdfLink ? [{ label: 'Notification PDF', url: job.pdfLink }] : [],
+      logoUrl: ''
     };
   }, [job?.description, job?.applyLink, job?.pdfLink]);
 
@@ -241,7 +249,7 @@ export default function JobDetails() {
               </div>
             </div>
             <div className="hidden md:block w-64 shrink-0">
-              <img src="https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png" alt="Hero Illustration" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+              <img src={logoUrl || "https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png"} alt="Job Logo" className="w-full h-auto object-contain max-h-48" referrerPolicy="no-referrer" />
             </div>
           </div>
         </div>
@@ -322,7 +330,7 @@ export default function JobDetails() {
                                 {row.map((cell: string, j: number) => (
                                   <td 
                                     key={j} 
-                                    className={`border border-gray-200 px-4 py-3 text-sm text-gray-700 ${section.tableData.boldCells?.[i]?.[j] ? 'font-bold' : ''}`} 
+                                    className={`border border-gray-200 px-4 py-3 text-sm text-gray-700 ${section.tableData.boldCells?.[i]?.[j] ? 'font-bold' : ''} [&_a]:no-underline hover:[&_a]:underline [&_a]:text-blue-600 [&_a]:font-medium [&_a]:inline-flex [&_a]:items-center [&_a]:gap-1`} 
                                     dangerouslySetInnerHTML={{ __html: cell }}
                                   ></td>
                                 ))}
@@ -433,16 +441,16 @@ export default function JobDetails() {
           </div>
 
           {/* Right Column (Sidebar) */}
-          <div className="lg:w-1/3 space-y-6">
-            
-            {/* Promo Banner */}
-            <div className="bg-gradient-to-br from-red-900 to-black rounded-lg p-6 text-white text-center shadow-md">
-              <h3 className="text-2xl font-bold mb-2">Crack {job.title}</h3>
-              <p className="text-sm text-gray-300 mb-4">With India's Super Teachers</p>
-              <button className="bg-white text-red-900 font-bold px-4 py-2 rounded w-full hover:bg-gray-100 transition">
-                Join SuperCoaching
-              </button>
-            </div>
+          <div className="lg:w-1/3">
+            <div className="sticky top-32 space-y-6 self-start">
+              {/* Promo Banner */}
+              <div className="bg-gradient-to-br from-red-900 to-black rounded-lg p-6 text-white text-center shadow-md">
+                <h3 className="text-2xl font-bold mb-2">Crack {job.title}</h3>
+                <p className="text-sm text-gray-300 mb-4">With India's Super Teachers</p>
+                <button className="bg-white text-red-900 font-bold px-4 py-2 rounded w-full hover:bg-gray-100 transition">
+                  Join SuperCoaching
+                </button>
+              </div>
 
             {/* Important Dates Card */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -462,11 +470,16 @@ export default function JobDetails() {
                            d.icon === 'FileText' ? <FileText size={14} className="text-white" /> :
                            d.icon === 'CheckCircle2' ? <CheckCircle2 size={14} className="text-white" /> :
                            d.icon === 'Clock' ? <Clock size={14} className="text-white" /> :
+                           d.icon === 'Download' ? <Download size={14} className="text-white" /> :
+                           d.icon === 'Link' ? <LinkIcon size={14} className="text-white" /> :
+                           d.icon === 'AlertCircle' ? <AlertCircle size={14} className="text-white" /> :
+                           d.icon === 'Info' ? <Info size={14} className="text-white" /> :
                            // Fallback to text-based matching if icon is not explicitly set
                            d.label.toLowerCase().includes('notification') ? <Bell size={14} className="text-white" /> : 
                            d.label.toLowerCase().includes('exam') ? <Calendar size={14} className="text-white" /> :
                            d.label.toLowerCase().includes('admit') ? <FileText size={14} className="text-white" /> :
                            d.label.toLowerCase().includes('result') ? <CheckCircle2 size={14} className="text-white" /> :
+                           d.label.toLowerCase().includes('download') ? <Download size={14} className="text-white" /> :
                            <Clock size={14} className="text-white" />}
                         </div>
                         <div className="flex items-center gap-2 mb-1">
@@ -643,8 +656,8 @@ export default function JobDetails() {
                 </Link>
               </div>
             </div>
-
           </div>
+        </div>
         </div>
       </div>
     </div>

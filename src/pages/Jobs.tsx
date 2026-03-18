@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { slugify } from "../utils";
 import { supabase } from "../services/supabaseClient";
 import { format } from "date-fns";
 import { Search } from "lucide-react";
@@ -96,7 +97,7 @@ export default function Jobs() {
             </div>
             
             <div className="flex flex-col gap-3 mt-auto">
-              <Link to={`/jobs/${job.id}`} className="w-full text-center bg-blue-50 text-blue-700 py-2.5 rounded-lg font-bold hover:bg-blue-100 transition">
+              <Link to={`/jobs/${slugify(job.title)}`} className="w-full text-center bg-blue-50 text-blue-700 py-2.5 rounded-lg font-bold hover:bg-blue-100 transition">
                 View Full Details
               </Link>
               <div className="flex gap-3">

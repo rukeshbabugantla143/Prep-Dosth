@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../services/supabaseClient";
 import { Link, useNavigate } from "react-router-dom";
+import { slugify } from "../utils";
 import { Search, Users, Award, BookOpen, PlayCircle, ChevronRight, CheckCircle2, FileText, Clock, Calendar, Video } from "lucide-react";
 
 export default function Home() {
@@ -224,7 +225,7 @@ export default function Home() {
                     })()}
                   </span>
                 </div>
-                <Link to={`/exams/${exam.id}`} className="text-[#15b86c] font-bold text-sm hover:underline">View Details</Link>
+                <Link to={`/exams/${slugify(exam.title)}`} className="text-[#15b86c] font-bold text-sm hover:underline">View Details</Link>
               </div>
             </div>
           ))}
@@ -335,7 +336,7 @@ export default function Home() {
                   <BookOpen size={16} className="text-gray-400" /> {job.qualification}
                 </p>
               </div>
-              <Link to={`/jobs/${job.id}`} className="w-full block text-center bg-gray-900 text-white py-2.5 rounded-lg font-bold hover:bg-gray-800 transition">
+              <Link to={`/jobs/${slugify(job.title)}`} className="w-full block text-center bg-gray-900 text-white py-2.5 rounded-lg font-bold hover:bg-gray-800 transition">
                 View Details
               </Link>
             </div>

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { Calendar, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, BookOpen, PlayCircle, Download, Bell, Play, X } from 'lucide-react';
+import { slugify } from '../utils';
+import { Calendar, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, BookOpen, PlayCircle, Download, Bell, Play, X, Link as LinkIcon, AlertCircle, Info } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function ExamDetails() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const [exam, setExam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -14,25 +15,28 @@ export default function ExamDetails() {
 
   useEffect(() => {
     const fetchExam = async () => {
-      const { data, error } = await supabase.from('exams').select('*').eq('id', id).single();
+      const { data, error } = await supabase.from('exams').select('*');
       if (data) {
-        setExam(data);
-        // Fetch important links for this exam
-        const { data: linksData } = await supabase
-          .from('important_links')
-          .select('*')
-          .eq('exam_id', data.id)
-          .order('order_index', { ascending: true });
-        if (linksData) setImportantLinks(linksData);
+        const exam = data.find(e => slugify(e.title) === slug);
+        setExam(exam);
+        if (exam) {
+          // Fetch important links for this exam
+          const { data: linksData } = await supabase
+            .from('important_links')
+            .select('*')
+            .eq('exam_id', exam.id)
+            .order('order_index', { ascending: true });
+          if (linksData) setImportantLinks(linksData);
+        }
       }
       if (error) console.error("Error fetching exam details:", error);
       setLoading(false);
     };
     fetchExam();
-  }, [id]);
+  }, [slug]);
 
-  const { toc, sections, status, customDates, officialLinks, notificationLinks, youtubeVideos } = React.useMemo(() => {
-    if (!exam?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [], youtubeVideos: [] };
+  const { toc, sections, status, customDates, officialLinks, notificationLinks, youtubeVideos, logoUrl } = React.useMemo(() => {
+    if (!exam?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [], youtubeVideos: [], logoUrl: '' };
     
     const generatedToc: { id: string, text: string }[] = [];
     const generatedSections: any[] = [];
@@ -41,6 +45,7 @@ export default function ExamDetails() {
     let examOfficialLinks: { label: string, url: string, color?: string }[] = [];
     let examNotificationLinks: { label: string, url: string, color?: string }[] = [];
     let examYoutubeVideos: { url: string, title: string }[] = [];
+    let examLogoUrl = '';
 
     try {
       const trimmedDesc = exam.description.trim();
@@ -51,6 +56,7 @@ export default function ExamDetails() {
         if (!Array.isArray(parsedData)) {
           examStatus = parsedData.status || 'Confirmed';
           examCustomDates = parsedData.important_dates || [];
+          examLogoUrl = parsedData.logo_url || '';
           
           // Handle multiple links
           if (parsedData.official_links) {
@@ -96,7 +102,8 @@ export default function ExamDetails() {
           customDates: examCustomDates,
           officialLinks: examOfficialLinks,
           notificationLinks: examNotificationLinks,
-          youtubeVideos: examYoutubeVideos
+          youtubeVideos: examYoutubeVideos,
+          logoUrl: examLogoUrl
         };
       }
     } catch (e) {
@@ -163,7 +170,8 @@ export default function ExamDetails() {
       customDates: [],
       officialLinks: exam.link ? [{ label: 'Official Website', url: exam.link }] : [],
       notificationLinks: [],
-      youtubeVideos: []
+      youtubeVideos: [],
+      logoUrl: ''
     };
   }, [exam?.description, exam?.link]);
 
@@ -227,11 +235,11 @@ export default function ExamDetails() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
           <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
             <div className="hidden md:block w-64 shrink-0">
-              <img src="https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png" alt="Hero Illustration" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+              <img src={logoUrl || "https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png"} alt="Exam Logo" className="w-full h-auto object-contain max-h-48" referrerPolicy="no-referrer" />
             </div>
             <div className="flex-1">
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight">
-                {exam.title} Notification, Exam Date Out, Vacancy, Selection and Eligibility Criteria
+                {exam.title} Exam - Registration (Started), Date, Syllabus, Pattern, Eligibility, Admission Process
               </h1>
               <div className="flex flex-wrap gap-4">
                 <Link to="/tests" className="bg-[#15b86c] text-white px-6 py-2.5 rounded font-medium hover:bg-[#12a15e] transition flex items-center gap-2">
@@ -328,7 +336,7 @@ export default function ExamDetails() {
                                 {row.map((cell: string, j: number) => (
                                   <td 
                                     key={j} 
-                                    className={`border border-gray-200 px-4 py-3 text-sm text-gray-700 ${section.tableData.boldCells?.[i]?.[j] ? 'font-bold' : ''}`} 
+                                    className={`border border-gray-200 px-4 py-3 text-sm text-gray-700 ${section.tableData.boldCells?.[i]?.[j] ? 'font-bold' : ''} [&_a]:no-underline hover:[&_a]:underline [&_a]:text-blue-600 [&_a]:font-medium [&_a]:inline-flex [&_a]:items-center [&_a]:gap-1`} 
                                     dangerouslySetInnerHTML={{ __html: cell }}
                                   ></td>
                                 ))}
@@ -497,16 +505,16 @@ export default function ExamDetails() {
           </div>
 
           {/* Right Column (Sidebar) */}
-          <div className="lg:w-1/3 space-y-6">
-            
-            {/* Promo Banner */}
-            <div className="bg-gradient-to-br from-red-900 to-black rounded-lg p-6 text-white text-center shadow-md">
-              <h3 className="text-2xl font-bold mb-2">Crack {exam.title}</h3>
-              <p className="text-sm text-gray-300 mb-4">With India's Super Teachers</p>
-              <button className="bg-white text-red-900 font-bold px-4 py-2 rounded w-full hover:bg-gray-100 transition">
-                Join SuperCoaching
-              </button>
-            </div>
+          <div className="lg:w-1/3">
+            <div className="sticky top-32 space-y-6 self-start">
+              {/* Promo Banner */}
+              <div className="bg-gradient-to-br from-red-900 to-black rounded-lg p-6 text-white text-center shadow-md">
+                <h3 className="text-2xl font-bold mb-2">Crack {exam.title}</h3>
+                <p className="text-sm text-gray-300 mb-4">With India's Super Teachers</p>
+                <button className="bg-white text-red-900 font-bold px-4 py-2 rounded w-full hover:bg-gray-100 transition">
+                  Join SuperCoaching
+                </button>
+              </div>
 
             {/* Important Dates Card */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -526,11 +534,16 @@ export default function ExamDetails() {
                            d.icon === 'FileText' ? <FileText size={14} className="text-white" /> :
                            d.icon === 'CheckCircle2' ? <CheckCircle2 size={14} className="text-white" /> :
                            d.icon === 'Clock' ? <Clock size={14} className="text-white" /> :
+                           d.icon === 'Download' ? <Download size={14} className="text-white" /> :
+                           d.icon === 'Link' ? <LinkIcon size={14} className="text-white" /> :
+                           d.icon === 'AlertCircle' ? <AlertCircle size={14} className="text-white" /> :
+                           d.icon === 'Info' ? <Info size={14} className="text-white" /> :
                            // Fallback to text-based matching if icon is not explicitly set
                            d.label.toLowerCase().includes('notification') ? <Bell size={14} className="text-white" /> : 
                            d.label.toLowerCase().includes('exam') ? <Calendar size={14} className="text-white" /> :
                            d.label.toLowerCase().includes('admit') ? <FileText size={14} className="text-white" /> :
                            d.label.toLowerCase().includes('result') ? <CheckCircle2 size={14} className="text-white" /> :
+                           d.label.toLowerCase().includes('download') ? <Download size={14} className="text-white" /> :
                            <Clock size={14} className="text-white" />}
                         </div>
                         <div className="flex items-center gap-2 mb-1">
@@ -643,8 +656,8 @@ export default function ExamDetails() {
                 </Link>
               </div>
             </div>
-
           </div>
+        </div>
         </div>
       </div>
     </div>

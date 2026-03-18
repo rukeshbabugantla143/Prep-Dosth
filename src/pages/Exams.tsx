@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { slugify } from "../utils";
 import { supabase } from "../services/supabaseClient";
 import { format } from "date-fns";
 import { Search } from "lucide-react";
@@ -124,7 +125,7 @@ export default function Exams() {
             </div>
             
             <div className="flex flex-col gap-3 mt-auto">
-              <Link to={`/exams/${exam.id}`} className="w-full text-center bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition shadow-sm">
+              <Link to={`/exams/${slugify(exam.title)}`} className="w-full text-center bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition shadow-sm">
                 View Full Details
               </Link>
               {exam.link && (
