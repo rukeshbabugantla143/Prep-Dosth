@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Upload, X, CheckCircle2, Loader2 } from "lucide-react";
+import { Upload, X, CheckCircle2, Loader2, Link as LinkIcon } from "lucide-react";
 import { supabase } from "../../services/supabaseClient";
 
 interface ImageUploadProps {
@@ -12,6 +12,8 @@ export default function ImageUpload({ onUploadSuccess, currentImage, label = "Up
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(currentImage || null);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<'upload' | 'url'>('upload');
+  const [urlInput, setUrlInput] = useState("");
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -32,14 +34,14 @@ export default function ImageUpload({ onUploadSuccess, currentImage, label = "Up
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
-        .from('IMAGES')
+        .from('images')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       // Get Public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('IMAGES')
+        .from('images')
         .getPublicUrl(filePath);
 
       setPreview(publicUrl);
@@ -52,26 +54,100 @@ export default function ImageUpload({ onUploadSuccess, currentImage, label = "Up
     }
   };
 
+  const handleUrlSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!urlInput.trim()) return;
+    
+    if (!urlInput.startsWith('http')) {
+      setError("Please enter a valid URL starting with http or https");
+      return;
+    }
+
+    setPreview(urlInput);
+    onUploadSuccess(urlInput);
+    setError(null);
+  };
+
   return (
     <div className="space-y-2">
-      <label className="text-sm font-semibold text-gray-600">{label}</label>
-      <div className="relative border-2 border-dashed rounded-xl p-4 min-h-[150px] flex flex-col items-center justify-center">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-semibold text-gray-600">{label}</label>
+        {!preview && (
+          <div className="flex bg-gray-100 p-1 rounded-lg text-xs">
+            <button
+              onClick={() => setMode('upload')}
+              className={`px-3 py-1 rounded-md transition ${mode === 'upload' ? 'bg-white shadow-sm text-[#15b86c] font-bold' : 'text-gray-500'}`}
+            >
+              Upload
+            </button>
+            <button
+              onClick={() => setMode('url')}
+              className={`px-3 py-1 rounded-md transition ${mode === 'url' ? 'bg-white shadow-sm text-[#15b86c] font-bold' : 'text-gray-500'}`}
+            >
+              URL
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="relative border-2 border-dashed rounded-xl p-4 min-h-[150px] flex flex-col items-center justify-center bg-white">
         {preview ? (
           <div className="relative w-full flex flex-col items-center">
-            <img src={preview} alt="Preview" className="max-h-32 rounded-lg mb-2" referrerPolicy="no-referrer" />
+            <img src={preview} alt="Preview" className="max-h-48 rounded-lg mb-2 object-contain" referrerPolicy="no-referrer" />
             <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
-              <CheckCircle2 size={16} /> Uploaded Successfully
+              <CheckCircle2 size={16} /> Image Set Successfully
             </div>
-            <button onClick={() => { setPreview(null); onUploadSuccess(""); }} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><X size={14} /></button>
+            <button 
+              onClick={() => { 
+                setPreview(null); 
+                onUploadSuccess(""); 
+                setUrlInput("");
+              }} 
+              className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition"
+            >
+              <X size={14} />
+            </button>
           </div>
         ) : (
-          <label className="cursor-pointer flex flex-col items-center gap-2">
-            {uploading ? <Loader2 className="animate-spin text-[#15b86c]" size={32} /> : <Upload size={24} className="text-gray-400" />}
-            <span className="text-sm text-gray-500">{uploading ? "Uploading..." : "Click to upload image"}</span>
-            <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={uploading} />
-          </label>
+          <>
+            {mode === 'upload' ? (
+              <label className="cursor-pointer flex flex-col items-center gap-2 w-full py-4">
+                {uploading ? (
+                  <Loader2 className="animate-spin text-[#15b86c]" size={32} />
+                ) : (
+                  <div className="p-3 bg-gray-50 rounded-full text-gray-400">
+                    <Upload size={24} />
+                  </div>
+                )}
+                <span className="text-sm text-gray-500">{uploading ? "Uploading to Supabase..." : "Click to upload image"}</span>
+                <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={uploading} />
+              </label>
+            ) : (
+              <form onSubmit={handleUrlSubmit} className="w-full space-y-3">
+                <div className="flex flex-col items-center gap-2 text-gray-400 mb-2">
+                  <LinkIcon size={24} />
+                  <span className="text-sm text-gray-500">Enter Image URL</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                    className="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#15b86c] outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#15b86c] text-white rounded-lg text-sm font-medium hover:bg-[#12a35f] transition"
+                  >
+                    Add
+                  </button>
+                </div>
+              </form>
+            )}
+          </>
         )}
-        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+        {error && <p className="text-xs text-red-500 mt-2 font-medium">{error}</p>}
       </div>
     </div>
   );
