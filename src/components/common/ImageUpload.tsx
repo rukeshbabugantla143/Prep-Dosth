@@ -31,31 +31,37 @@ export default function ImageUpload({ onUploadSuccess, currentImage, label = "Up
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
       const filePath = `uploads/${fileName}`;
+      const bucketName = 'images';
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
-        .from('images')
+        .from(bucketName)
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       // Get Public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('images')
+        .from(bucketName)
         .getPublicUrl(filePath);
 
       setPreview(publicUrl);
       onUploadSuccess(publicUrl);
     } catch (err: any) {
       console.error("Upload error:", err);
-      setError(`Upload failed: ${err.message}`);
+      const bucketName = 'images';
+      setError(`Upload to bucket '${bucketName}' failed: ${err.message}`);
     } finally {
       setUploading(false);
     }
   };
 
-  const handleUrlSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUrlSubmit = (e?: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (!urlInput.trim()) return;
     
     if (!urlInput.startsWith('http')) {
@@ -123,7 +129,7 @@ export default function ImageUpload({ onUploadSuccess, currentImage, label = "Up
                 <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={uploading} />
               </label>
             ) : (
-              <form onSubmit={handleUrlSubmit} className="w-full space-y-3">
+              <div className="w-full space-y-3">
                 <div className="flex flex-col items-center gap-2 text-gray-400 mb-2">
                   <LinkIcon size={24} />
                   <span className="text-sm text-gray-500">Enter Image URL</span>
@@ -133,17 +139,25 @@ export default function ImageUpload({ onUploadSuccess, currentImage, label = "Up
                     type="url"
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleUrlSubmit(e);
+                      }
+                    }}
                     placeholder="https://example.com/image.jpg"
                     className="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#15b86c] outline-none"
                   />
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={(e) => handleUrlSubmit(e)}
                     className="px-4 py-2 bg-[#15b86c] text-white rounded-lg text-sm font-medium hover:bg-[#12a35f] transition"
                   >
                     Add
                   </button>
                 </div>
-              </form>
+              </div>
             )}
           </>
         )}
