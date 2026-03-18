@@ -42,32 +42,7 @@ const getIcon = (name: string) => {
   return icons[name] || <Users size={18} />;
 };
 
-const examCategories = [
-  { id: 'SSC Exams', icon: <Users size={18} />, items: ['SSC GD Constable', 'SSC CHSL', 'SSC Selection Post', 'SBI Clerk', 'SBI CBO', 'RBI Assistant', 'SSC JE', 'IBPS SO'] },
-  { id: 'Banking Exams', icon: <Landmark size={18} />, items: ['SBI Clerk', 'SBI PO', 'IBPS PO', 'IBPS Clerk', 'RBI Assistant', 'RBI Grade B'] },
-  { id: 'Teaching Exams', icon: <BookOpen size={18} />, items: ['CTET', 'UPTET', 'KVS', 'DSSSB', 'Super TET', 'NVS'] },
-  { id: 'Civil Services', icon: <GraduationCap size={18} />, items: ['UPSC Prelims', 'UPSC Mains', 'UPPSC', 'BPSC', 'MPSC', 'RPSC'] },
-  { id: 'Railway Exams', icon: <Train size={18} />, items: ['RRB NTPC', 'RRB Group D', 'RRB ALP', 'RRB JE', 'RPF Constable', 'RPF SI'] },
-  { id: 'Defence Exams', icon: <Shield size={18} />, items: ['NDA', 'CDS', 'AFCAT', 'CAPF', 'Airforce X & Y', 'Navy AA/SSR'] },
-  { id: 'Engineering CETs', icon: <Cpu size={18} />, items: ['JEE Main', 'MHT CET', 'KCET', 'AP EAPCET', 'TS EAMCET', 'WBJEE', 'BITSAT', 'AP ECET', 'TS ECET'] },
-  { id: 'Medical CETs', icon: <Activity size={18} />, items: ['NEET UG', 'NEET PG', 'AIIMS', 'JIPMER', 'AFMC'] },
-  { id: 'Management CETs', icon: <Briefcase size={18} />, items: ['CAT', 'MAT', 'XAT', 'CMAT', 'NMAT', 'SNAP'] },
-  { id: 'Law CETs', icon: <Scale size={18} />, items: ['CLAT', 'AILET', 'LSAT India', 'MH CET Law'] },
-  { id: 'University CETs', icon: <GraduationCap size={18} />, items: ['CUET UG', 'CUET PG', 'IPU CET', 'PU CET'] },
-];
-
-const jobCategories = [
-  { id: 'Central Govt', icon: <Building size={18} />, items: ['UPSC Recruitment', 'SSC Recruitment', 'Railway Jobs', 'Post Office Jobs', 'PSU Jobs'] },
-  { id: 'State Govt', icon: <Map size={18} />, items: ['UP Govt Jobs', 'Bihar Govt Jobs', 'MP Govt Jobs', 'Rajasthan Jobs', 'Delhi Jobs'] },
-  { id: 'Bank Jobs', icon: <Landmark size={18} />, items: ['SBI Jobs', 'IBPS Jobs', 'RBI Jobs', 'NABARD Jobs', 'Cooperative Banks'] },
-  { id: 'Defence Jobs', icon: <Shield size={18} />, items: ['Indian Army', 'Indian Navy', 'Indian Air Force', 'Coast Guard', 'Paramilitary'] },
-];
-
-const testCategories = [
-  { id: 'Full Length Tests', icon: <FileText size={18} />, items: ['SSC CGL Tier 1', 'SBI PO Prelims', 'RRB NTPC CBT 1', 'CTET Paper 1', 'UPSC CSAT'] },
-  { id: 'Subject Tests', icon: <BookOpen size={18} />, items: ['Quantitative Aptitude', 'Logical Reasoning', 'English Language', 'General Awareness', 'Current Affairs'] },
-  { id: 'Previous Papers', icon: <PlayCircle size={18} />, items: ['SSC CGL 2025', 'SBI PO 2025', 'RRB NTPC 2024', 'UPSC Prelims 2025', 'CTET 2025'] },
-];
+// Removed hardcoded categories
 
 function MegaMenuDropdown({ categories, basePath, offsetClass = 'left-0' }: { categories: any[], basePath: string, offsetClass?: string }) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -79,7 +54,7 @@ function MegaMenuDropdown({ categories, basePath, offsetClass = 'left-0' }: { ca
     >
       {/* Left Column */}
       <div className="w-60 bg-white py-2 flex-shrink-0">
-        {categories.map(cat => (
+        {categories.filter(cat => cat.items?.length > 0).map(cat => (
           <div
             key={cat.id}
             onMouseEnter={() => setActiveCategory(cat.id)}
@@ -100,18 +75,27 @@ function MegaMenuDropdown({ categories, basePath, offsetClass = 'left-0' }: { ca
       {/* Right Column */}
       {activeCategory && (
         <div className="w-[400px] bg-slate-50 border-l border-gray-200 p-6 flex-shrink-0">
-          <div className="grid grid-cols-2 gap-3">
-            {categories.find(c => c.id === activeCategory)?.items.map((item: string) => (
-              <Link to={`${basePath}?search=${encodeURIComponent(item.replace(/<[^>]*>?/gm, ''))}`} key={item} className="flex items-center gap-3 bg-white border border-gray-200 p-3 rounded-lg hover:border-[#15b86c] hover:shadow-md transition group/item">
-                <div className="bg-red-50 p-1.5 rounded-md text-red-500 group-hover/item:bg-[#15b86c]/10 group-hover/item:text-[#15b86c] transition-colors flex-shrink-0">
-                  <Award size={16} />
-                </div>
-                <span className="text-sm font-semibold text-gray-700 group-hover/item:text-[#15b86c] transition-colors truncate">
-                  {item.replace(/<[^>]*>?/gm, '')}
-                </span>
-              </Link>
-            ))}
-          </div>
+          {categories.find(c => c.id === activeCategory)?.items?.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3">
+              {categories.find(c => c.id === activeCategory)?.items.map((item: any) => {
+                const label = typeof item === 'string' ? item : item.label;
+                return (
+                  <Link to={`${basePath}?search=${encodeURIComponent(label.replace(/<[^>]*>?/gm, ''))}`} key={label} className="flex items-center gap-3 bg-white border border-gray-200 p-3 rounded-lg hover:border-[#15b86c] hover:shadow-md transition group/item">
+                    <div className="bg-red-50 p-1.5 rounded-md text-red-500 group-hover/item:bg-[#15b86c]/10 group-hover/item:text-[#15b86c] transition-colors flex-shrink-0">
+                      <Award size={16} />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 group-hover/item:text-[#15b86c] transition-colors truncate">
+                      {label.replace(/<[^>]*>?/gm, '')}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+              No items found
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -132,7 +116,10 @@ export default function MainLayout() {
       ]);
       
       if (navRes.data) setDynamicMenu(navRes.data);
-      if (megaRes.data) setMegaMenuData(megaRes.data);
+      if (megaRes.data) {
+        console.log("Fetched mega menu data:", megaRes.data);
+        setMegaMenuData(megaRes.data);
+      }
     };
     fetchData();
   }, []);
@@ -143,7 +130,7 @@ export default function MainLayout() {
       .map(item => ({
         id: item.category_title,
         icon: getIcon(item.icon_name),
-        items: item.items
+        items: item.items || []
       }));
   };
 
@@ -172,79 +159,35 @@ export default function MainLayout() {
                 <img src="https://res.cloudinary.com/dbkmzja6c/image/upload/v1773433603/prepdosth_zvc5qm.png" alt="PrepDosth Logo" className="h-8 object-contain" referrerPolicy="no-referrer" />
               </Link>
               <nav className="hidden md:flex space-x-6 text-sm font-semibold text-gray-700 h-full items-center">
-                {dynamicMenu.length > 0 ? (
-                  dynamicMenu.map((item) => {
-                    // Check if this item should have a MegaMenu
-                    if (item.path === "/jobs") {
-                      const categories = getMegaMenuCategories('jobs');
-                      return (
-                        <div key={item.id} className="relative group h-full flex items-center">
-                          <Link to="/jobs" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">{item.label} <ChevronDown size={14} /></Link>
-                          {categories.length > 0 && <MegaMenuDropdown categories={categories} basePath="/jobs" offsetClass="left-0" />}
-                        </div>
-                      );
-                    }
-                    if (item.path === "/exams") {
-                      const categories = getMegaMenuCategories('exams');
-                      return (
-                        <div key={item.id} className="relative group h-full flex items-center">
-                          <Link to="/exams" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">{item.label} <ChevronDown size={14} /></Link>
-                          {categories.length > 0 && <MegaMenuDropdown categories={categories} basePath="/exams" offsetClass="-left-20" />}
-                        </div>
-                      );
-                    }
-                    if (item.path === "/tests") {
-                      const categories = getMegaMenuCategories('tests');
-                      return (
-                        <div key={item.id} className="relative group h-full flex items-center">
-                          <Link to="/tests" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">{item.label} <ChevronDown size={14} /></Link>
-                          {categories.length > 0 && <MegaMenuDropdown categories={categories} basePath="/tests" offsetClass="-left-40" />}
-                        </div>
-                      );
-                    }
-                    if (item.path === "/premium") {
-                      return (
-                        <div key={item.id} className="relative group h-full flex items-center">
-                          <Link to="/premium" className="hover:text-yellow-600 text-yellow-500 transition flex items-center gap-1 py-5">{item.label} <ChevronDown size={14} /></Link>
-                          <div className="absolute top-full right-0 w-64 bg-white shadow-xl border border-gray-100 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col py-2">
-                            <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Railway Premium Content</Link>
-                            <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Premium Mock Tests</Link>
-                            <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Paid Courses</Link>
+                    {dynamicMenu.map((item) => {
+                      // Check if this item should have a MegaMenu
+                      const categories = getMegaMenuCategories(item.path.replace('/', ''));
+                      
+                      if (['/jobs', '/exams', '/tests'].includes(item.path)) {
+                        return (
+                          <div key={item.id} className="relative group h-full flex items-center">
+                            <Link to={item.path} className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">{item.label} <ChevronDown size={14} /></Link>
+                            {categories.length > 0 && <MegaMenuDropdown categories={categories} basePath={item.path} offsetClass={item.path === '/jobs' ? 'left-0' : item.path === '/exams' ? '-left-20' : '-left-40'} />}
                           </div>
-                        </div>
+                        );
+                      }
+                      
+                      if (item.path === "/premium") {
+                        return (
+                          <div key={item.id} className="relative group h-full flex items-center">
+                            <Link to="/premium" className="hover:text-yellow-600 text-yellow-500 transition flex items-center gap-1 py-5">{item.label} <ChevronDown size={14} /></Link>
+                            <div className="absolute top-full right-0 w-64 bg-white shadow-xl border border-gray-100 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col py-2">
+                              <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Railway Premium Content</Link>
+                              <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Premium Mock Tests</Link>
+                              <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Paid Courses</Link>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <Link key={item.id} to={item.path} className="hover:text-[#15b86c] transition py-5">{item.label}</Link>
                       );
-                    }
-                    return (
-                      <Link key={item.id} to={item.path} className="hover:text-[#15b86c] transition py-5">{item.label}</Link>
-                    );
-                  })
-                ) : (
-                  <>
-                    <Link to="/" className="hover:text-[#15b86c] transition py-5">Home</Link>
-                    <div className="relative group h-full flex items-center">
-                      <Link to="/jobs" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">Jobs <ChevronDown size={14} /></Link>
-                      <MegaMenuDropdown categories={jobCategories} basePath="/jobs" offsetClass="left-0" />
-                    </div>
-                    <div className="relative group h-full flex items-center">
-                      <Link to="/exams" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">Exams <ChevronDown size={14} /></Link>
-                      <MegaMenuDropdown categories={examCategories} basePath="/exams" offsetClass="-left-20" />
-                    </div>
-                    <div className="relative group h-full flex items-center">
-                      <Link to="/tests" className="hover:text-[#15b86c] transition flex items-center gap-1 py-5">Mock Tests <ChevronDown size={14} /></Link>
-                      <MegaMenuDropdown categories={testCategories} basePath="/tests" offsetClass="-left-40" />
-                    </div>
-                    <div className="relative group h-full flex items-center">
-                      <Link to="/premium" className="hover:text-yellow-600 text-yellow-500 transition flex items-center gap-1 py-5">Premium <ChevronDown size={14} /></Link>
-                      <div className="absolute top-full right-0 w-64 bg-white shadow-xl border border-gray-100 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex flex-col py-2">
-                        <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Railway Premium Content</Link>
-                        <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Premium Mock Tests</Link>
-                        <Link to="/premium" className="px-4 py-2 hover:bg-yellow-50 hover:text-yellow-600 text-gray-700">Paid Courses</Link>
-                      </div>
-                    </div>
-                    <Link to="/about" className="hover:text-[#15b86c] transition py-5">About</Link>
-                    <Link to="/contact" className="hover:text-[#15b86c] transition py-5">Contact</Link>
-                  </>
-                )}
+                    })}
               </nav>
             </div>
 
@@ -283,8 +226,7 @@ export default function MainLayout() {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100 py-4 px-4 space-y-4 shadow-lg absolute w-full left-0">
-            {dynamicMenu.length > 0 ? (
-              dynamicMenu.map((item) => (
+            {dynamicMenu.map((item) => (
                 <Link 
                   key={item.id} 
                   to={item.path} 
@@ -293,18 +235,7 @@ export default function MainLayout() {
                 >
                   {item.label}
                 </Link>
-              ))
-            ) : (
-              <>
-                <Link to="/" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Home</Link>
-                <Link to="/jobs" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Jobs</Link>
-                <Link to="/exams" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Exams</Link>
-                <Link to="/tests" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Mock Tests</Link>
-                <Link to="/premium" className="block text-yellow-500 font-semibold hover:text-yellow-600" onClick={() => setIsMobileMenuOpen(false)}>Premium</Link>
-                <Link to="/about" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>About</Link>
-                <Link to="/contact" className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Contact</Link>
-              </>
-            )}
+              ))}
             {user ? (
               <>
                 <Link to={user.role === "admin" ? "/admin" : "/user"} className="block text-gray-700 font-semibold hover:text-[#15b86c]" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</Link>

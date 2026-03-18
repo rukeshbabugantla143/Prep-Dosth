@@ -10,11 +10,21 @@ export default function ExamDetails() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [importantLinks, setImportantLinks] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchExam = async () => {
       const { data, error } = await supabase.from('exams').select('*').eq('id', id).single();
-      if (data) setExam(data);
+      if (data) {
+        setExam(data);
+        // Fetch important links for this exam
+        const { data: linksData } = await supabase
+          .from('important_links')
+          .select('*')
+          .eq('exam_id', data.id)
+          .order('order_index', { ascending: true });
+        if (linksData) setImportantLinks(linksData);
+      }
       if (error) console.error("Error fetching exam details:", error);
       setLoading(false);
     };
@@ -254,7 +264,12 @@ export default function ExamDetails() {
                     <h2 className="text-xl font-bold text-gray-900 mb-2">
                       {section.title}
                     </h2>
-                    {section.description && <p className="text-gray-600 mb-4">{section.description}</p>}
+                    {(section.type === 'table' || section.type === 'text_table') && section.description && (
+                      <div 
+                        className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed mb-4"
+                        dangerouslySetInnerHTML={{ __html: section.description }}
+                      />
+                    )}
                     
                     {(section.type === 'text' || section.type === 'text_table') && (
                       <div 
@@ -277,16 +292,16 @@ export default function ExamDetails() {
                         <table className="min-w-full border-collapse border border-gray-200">
                           <thead>
                             <tr className="bg-gray-50">
-                              {section.tableData.headers.map((header, i) => (
+                              {section.tableData.headers.map((header: string, i: number) => (
                                 <th key={i} className="border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-700">{header}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
-                            {section.tableData.rows.map((row, i) => (
+                            {section.tableData.rows.map((row: string[], i: number) => (
                               <tr key={i}>
-                                {row.map((cell, j) => (
-                                  <td key={j} className="border border-gray-200 px-4 py-3 text-sm text-gray-700">{cell}</td>
+                                {row.map((cell: string, j: number) => (
+                                  <td key={j} className="border border-gray-200 px-4 py-3 text-sm text-gray-700" dangerouslySetInnerHTML={{ __html: cell }}></td>
                                 ))}
                               </tr>
                             ))}
@@ -528,17 +543,19 @@ export default function ExamDetails() {
             </div>
 
             {/* Important Links */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-              <h3 className="font-bold text-gray-900 p-4 border-b border-gray-200 bg-gray-50">Important Links</h3>
-              <div className="flex flex-col">
-                {['Previous Year Question Paper', 'Syllabus', 'Eligibility Criteria', 'Cut Off', 'Admit Card', 'Exam Analysis', 'Result'].map((link, idx) => (
-                  <a key={idx} href="#" className="p-3 px-4 text-sm text-gray-700 hover:text-[#15b86c] border-b border-gray-100 last:border-0 flex justify-between items-center transition-colors">
-                    {exam.title} {link}
-                    <ChevronRight size={16} className="text-gray-400" />
-                  </a>
-                ))}
+            {importantLinks.length > 0 && (
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                <h3 className="font-bold text-gray-900 p-4 border-b border-gray-200 bg-gray-50">Important Links</h3>
+                <div className="flex flex-col">
+                  {importantLinks.map((link) => (
+                    <Link key={link.id} to={link.url} className="p-3 px-4 text-sm text-gray-700 hover:text-[#15b86c] border-b border-gray-100 last:border-0 flex justify-between items-center transition-colors">
+                      {link.title}
+                      <ChevronRight size={16} className="text-gray-400" />
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Official Links */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

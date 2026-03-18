@@ -1,11 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../services/supabaseClient";
 import { Edit, Trash2, Plus } from "lucide-react";
+import ConfirmationModal from "../../components/ConfirmationModal";
 
 export default function ManageNotifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentNotification, setCurrentNotification] = useState<any>({});
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   const fetchNotifications = async () => {
     const { data, error } = await supabase.from("notifications").select("*");
@@ -18,10 +32,21 @@ export default function ManageNotifications() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this notification?")) {
-      await supabase.from("notifications").delete().eq("id", id);
-      fetchNotifications();
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Notification",
+      message: "Are you sure you want to delete this notification? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from("notifications").delete().eq("id", id);
+          if (error) throw error;
+          fetchNotifications();
+        } catch (error: any) {
+          console.error("Error deleting notification:", error);
+          alert(`Failed to delete notification: ${error.message || "Unknown error"}`);
+        }
+      }
+    });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -95,6 +120,14 @@ export default function ManageNotifications() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+      />
     </div>
   );
 }

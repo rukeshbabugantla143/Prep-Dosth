@@ -6,21 +6,68 @@ import { Search, Users, Award, BookOpen, PlayCircle, ChevronRight, CheckCircle2,
 export default function Home() {
   const [tests, setTests] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
+  const [exams, setExams] = useState<any[]>([]);
+  const [heroes, setHeroes] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+  const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
+  const [categories, setCategories] = useState<{ name: string; count: number; icon: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
-      const [testsRes, jobsRes] = await Promise.all([
+      const [testsRes, jobsRes, examsRes, heroRes, sectionsRes] = await Promise.all([
         supabase.from("tests").select("*").limit(4),
         supabase.from("jobs").select("*").limit(4),
+        supabase.from("exams").select("category"),
+        supabase.from("hero_section").select("*").order('id', { ascending: true }),
+        supabase.from("sections").select("*").order('id', { ascending: true }),
       ]);
       if (testsRes.data) setTests(testsRes.data);
       if (jobsRes.data) setJobs(jobsRes.data);
+      if (heroRes.data) setHeroes(heroRes.data);
+      if (sectionsRes.data) setSections(sectionsRes.data);
+      if (examsRes.data) {
+        const counts = examsRes.data.reduce((acc: any, exam: any) => {
+          if (exam.category) {
+            acc[exam.category] = (acc[exam.category] || 0) + 1;
+          }
+          return acc;
+        }, {});
+        
+        const iconMap: Record<string, string> = {
+          "SSC Exams": "🏛️",
+          "Banking Exams": "🏦",
+          "Teaching Exams": "👩‍🏫",
+          "Civil Services": "⚖️",
+          "Railway Exams": "🚂",
+          "Engineering": "⚙️",
+          "Defence Exams": "🛡️",
+          "State Exams": "🗺️"
+        };
+
+        const dynamicCategories = Object.entries(counts).map(([name, count]) => ({
+          name,
+          count: `${count}+ Exams`,
+          icon: iconMap[name] || "📚"
+        }));
+        setCategories(dynamicCategories);
+      }
+      
+      const { data: latestExams } = await supabase.from("exams").select("*").order('date', { ascending: false }).limit(3);
+      if (latestExams) setExams(latestExams);
     };
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (heroes.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentHeroIndex((prev) => (prev + 1) % heroes.length);
+      }, 5000); // Change slide every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [heroes]);
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -42,49 +89,48 @@ export default function Home() {
   return (
     <div className="w-full font-sans">
       {/* Hero Section */}
-      <section className="bg-[#0b1b3d] text-white pt-16 pb-28 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
-          <div className="space-y-8">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight">
-              Crack your goal with <br />
-              <span className="text-[#15b86c]">India's super teachers</span>
-            </h1>
-            <p className="text-lg md:text-xl text-gray-300 font-medium max-w-lg">
-              Get SuperCoaching, Mock Tests, Study Notes & more for your exam preparation.
-            </p>
-            
-            <form onSubmit={handleSearch} className="bg-white p-2 rounded-xl flex items-center shadow-lg max-w-xl">
-              <Search className="text-gray-400 ml-3" size={24} />
-              <input 
-                type="text" 
-                placeholder="Search for exams, test series, etc." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-3 text-gray-800 outline-none text-lg"
-              />
-              <button type="submit" className="bg-[#15b86c] text-white px-8 py-3 rounded-lg font-bold text-lg hover:bg-[#12a15e] transition whitespace-nowrap">
-                Search
-              </button>
-            </form>
-
-            <div className="flex flex-wrap gap-4 text-sm font-medium text-gray-300">
-              <span className="flex items-center gap-1 bg-white/10 px-3 py-1.5 rounded-full"><CheckCircle2 size={16} className="text-[#15b86c]" /> Live Classes</span>
-              <span className="flex items-center gap-1 bg-white/10 px-3 py-1.5 rounded-full"><CheckCircle2 size={16} className="text-[#15b86c]" /> Mock Tests</span>
-              <span className="flex items-center gap-1 bg-white/10 px-3 py-1.5 rounded-full"><CheckCircle2 size={16} className="text-[#15b86c]" /> Previous Year Papers</span>
+      {heroes.length > 0 ? (
+        <section className="relative w-full overflow-hidden h-[40vh] sm:h-[50vh] md:h-[60vh] lg:h-[70vh] xl:h-[80vh]">
+          {heroes.map((hero, index) => (
+            <div 
+              key={hero.id} 
+              className={`absolute inset-0 transition-all duration-1000 ${index === currentHeroIndex ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'}`}
+            >
+              {hero.image ? (
+                <img 
+                  src={hero.image} 
+                  className="w-full h-full object-cover md:object-fill lg:object-cover" 
+                  alt={hero.title || "Hero Image"} 
+                  referrerPolicy="no-referrer" 
+                />
+              ) : (
+                <div className="w-full h-full bg-[#0b1b3d] flex items-center justify-center">
+                  <span className="text-white/20 text-2xl font-bold">No Image</span>
+                </div>
+              )}
             </div>
-          </div>
+          ))}
           
-          <div className="hidden lg:block relative">
-            <div className="absolute inset-0 bg-gradient-to-tr from-[#15b86c]/20 to-transparent rounded-full blur-3xl"></div>
-            <img 
-              src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-              alt="Students studying" 
-              className="rounded-2xl shadow-2xl border-4 border-white/10 relative z-10 object-cover h-[400px] w-full"
-              referrerPolicy="no-referrer"
-            />
+          {/* Slider Indicators */}
+          {heroes.length > 1 && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+              {heroes.map((_, idx) => (
+                <button 
+                  key={idx} 
+                  onClick={() => setCurrentHeroIndex(idx)}
+                  className={`w-2.5 h-2.5 rounded-full transition-all ${idx === currentHeroIndex ? 'bg-[#15b86c] w-8' : 'bg-white/50 hover:bg-white'}`}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
+        <section className="bg-[#0b1b3d] text-white pt-16 pb-28 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+          <div className="max-w-7xl mx-auto text-center">
+            <h1 className="text-4xl md:text-5xl font-black">Loading...</h1>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Stats Strip */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-20">
@@ -149,6 +195,42 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Exam Notifications */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 bg-gray-50 rounded-2xl">
+        <div className="flex justify-between items-end mb-8">
+          <div>
+            <h2 className="text-3xl font-black text-gray-900 mb-2">Exam Notifications</h2>
+            <p className="text-gray-600 font-medium">Stay updated with the latest exam dates</p>
+          </div>
+          <Link to="/exams" className="hidden md:flex items-center text-[#15b86c] font-bold hover:underline">
+            View All <ChevronRight size={20} />
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {exams.map(exam => (
+            <div key={exam.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+              <h3 className="font-bold text-gray-900 text-lg mb-2">{exam.title}</h3>
+              <p className="text-sm text-gray-500 mb-4 line-clamp-2">{exam.category}</p>
+              <div className="flex justify-between items-center">
+                <div className="flex flex-col">
+                  <span className="text-sm text-gray-500">{new Date(exam.date).toLocaleDateString()}</span>
+                  <span className="text-sm text-red-600 font-bold">
+                    {(() => {
+                      const diff = new Date(exam.date).getTime() - new Date().getTime();
+                      const daysLeft = Math.floor(diff / (1000 * 60 * 60 * 24));
+                      if (daysLeft > 0) return `${daysLeft} days left`;
+                      if (daysLeft === 0) return "Today";
+                      return "Exam Passed";
+                    })()}
+                  </span>
+                </div>
+                <Link to={`/exams/${exam.id}`} className="text-[#15b86c] font-bold text-sm hover:underline">View Details</Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Exam Categories */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="flex justify-between items-end mb-8">
@@ -162,7 +244,7 @@ export default function Home() {
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {examCategories.map((cat, idx) => (
+          {categories.map((cat, idx) => (
             <Link key={idx} to="/exams" className="bg-white border border-gray-200 p-6 rounded-2xl hover:shadow-lg hover:border-[#15b86c] transition group flex flex-col items-center text-center">
               <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">{cat.icon}</div>
               <h3 className="font-bold text-gray-800 mb-1">{cat.name}</h3>
@@ -343,6 +425,71 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Dynamic Admin Sections */}
+      {sections.map((section, idx) => (
+        <section key={section.id} className={`py-20 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {section.layout_type === 'reverse' ? (
+              <div className="flex flex-col md:flex-row-reverse items-center gap-12">
+                <div className="md:w-1/2">
+                  {section.image && <img src={section.image} className="rounded-2xl shadow-xl w-full object-cover h-[400px]" alt="" referrerPolicy="no-referrer" />}
+                </div>
+                <div className="md:w-1/2 space-y-6">
+                  <h2 className="text-3xl md:text-4xl font-black text-gray-900">{section.title}</h2>
+                  <p className="text-lg text-gray-600 leading-relaxed">{section.description}</p>
+                  {section.button_text && section.button_link && (
+                    <Link to={section.button_link} className="inline-block bg-[#15b86c] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#12a15e] transition">
+                      {section.button_text}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ) : section.layout_type === 'card' ? (
+              <div className="bg-white border border-gray-200 rounded-3xl p-8 md:p-12 shadow-xl flex flex-col md:flex-row items-center gap-12">
+                <div className="md:w-1/3">
+                  {section.image && <img src={section.image} className="rounded-2xl shadow-md w-full object-cover h-[300px]" alt="" referrerPolicy="no-referrer" />}
+                </div>
+                <div className="md:w-2/3 space-y-6">
+                  <h2 className="text-3xl font-black text-gray-900">{section.title}</h2>
+                  <p className="text-lg text-gray-600">{section.description}</p>
+                  {section.button_text && section.button_link && (
+                    <Link to={section.button_link} className="inline-block bg-gray-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-gray-800 transition">
+                      {section.button_text}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ) : section.layout_type === 'minimal' ? (
+              <div className="max-w-3xl mx-auto text-center space-y-6">
+                <h2 className="text-3xl md:text-4xl font-black text-gray-900">{section.title}</h2>
+                <p className="text-lg text-gray-600 leading-relaxed">{section.description}</p>
+                {section.button_text && section.button_link && (
+                  <Link to={section.button_link} className="inline-block text-[#15b86c] font-bold text-lg hover:underline">
+                    {section.button_text} →
+                  </Link>
+                )}
+              </div>
+            ) : (
+              /* Default Layout */
+              <div className="flex flex-col md:flex-row items-center gap-12">
+                <div className="md:w-1/2">
+                  {section.image && <img src={section.image} className="rounded-2xl shadow-xl w-full object-cover h-[400px]" alt="" referrerPolicy="no-referrer" />}
+                </div>
+                <div className="md:w-1/2 space-y-6">
+                  <h2 className="text-3xl md:text-4xl font-black text-gray-900">{section.title}</h2>
+                  <p className="text-lg text-gray-600 leading-relaxed">{section.description}</p>
+                  {section.button_text && section.button_link && (
+                    <Link to={section.button_link} className="inline-block bg-[#15b86c] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#12a15e] transition">
+                      {section.button_text}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

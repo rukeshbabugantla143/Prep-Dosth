@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../services/supabaseClient";
 import { Edit, Trash2, Plus, MoveUp, MoveDown } from "lucide-react";
+import ConfirmationModal from "../../components/ConfirmationModal";
 
 interface MenuItem {
   id?: string;
@@ -15,6 +16,19 @@ export default function ManageMenu() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentItem, setCurrentItem] = useState<MenuItem>({ label: "", path: "", order_index: 0, is_active: true });
   const [loading, setLoading] = useState(true);
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   const fetchMenuItems = async () => {
     setLoading(true);
@@ -50,10 +64,21 @@ export default function ManageMenu() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this menu item?")) {
-      await supabase.from("navigation").delete().eq("id", id);
-      fetchMenuItems();
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Menu Item",
+      message: "Are you sure you want to delete this menu item? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from("navigation").delete().eq("id", id);
+          if (error) throw error;
+          fetchMenuItems();
+        } catch (error: any) {
+          console.error("Error deleting menu item:", error);
+          alert(`Failed to delete menu item: ${error.message || "Unknown error"}`);
+        }
+      }
+    });
   };
 
   const moveItem = async (index: number, direction: 'up' | 'down') => {
@@ -183,6 +208,14 @@ export default function ManageMenu() {
           Make sure the paths match your application routes (e.g. /jobs, /exams).
         </p>
       </div>
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+      />
     </div>
   );
 }

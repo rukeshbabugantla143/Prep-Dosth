@@ -8,27 +8,23 @@ export default function Jobs() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [filter, setFilter] = useState("All Jobs");
   const [searchQuery, setSearchQuery] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchJobs = async () => {
       const { data, error } = await supabase.from("jobs").select("*");
-      if (data) setJobs(data);
+      if (data) {
+        setJobs(data);
+        const uniqueDepartments = Array.from(new Set(data.map((job: any) => job.department).filter(Boolean)));
+        setCategories(["All Jobs", ...uniqueDepartments] as string[]);
+      }
       if (error) console.error("Error fetching jobs:", error);
     };
     fetchJobs();
   }, []);
 
-  const filters = [
-    "All Jobs",
-    "Railway Jobs",
-    "Bank Jobs",
-    "Defence Jobs",
-    "State Jobs",
-    "Central Govt Jobs"
-  ];
-
   const filteredJobs = jobs.filter(job => {
-    const matchesFilter = filter === "All Jobs" || job.department?.toLowerCase().includes(filter.toLowerCase().replace(' jobs', ''));
+    const matchesFilter = filter === "All Jobs" || job.department === filter;
     const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           job.department?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
@@ -53,7 +49,7 @@ export default function Jobs() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-8">
-        {filters.map(f => (
+        {categories.map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}

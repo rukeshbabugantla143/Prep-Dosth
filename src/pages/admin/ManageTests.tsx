@@ -1,11 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../services/supabaseClient";
 import { Edit, Trash2, Plus } from "lucide-react";
+import ConfirmationModal from "../../components/ConfirmationModal";
 
 export default function ManageTests() {
   const [tests, setTests] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentTest, setCurrentTest] = useState<any>({ questions: [] });
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   const fetchTests = async () => {
     const { data, error } = await supabase.from("tests").select("*");
@@ -18,10 +32,21 @@ export default function ManageTests() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this test?")) {
-      await supabase.from("tests").delete().eq("id", id);
-      fetchTests();
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Test",
+      message: "Are you sure you want to delete this test? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from("tests").delete().eq("id", id);
+          if (error) throw error;
+          fetchTests();
+        } catch (error: any) {
+          console.error("Error deleting test:", error);
+          alert(`Failed to delete test: ${error.message || "Unknown error"}`);
+        }
+      }
+    });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -138,6 +163,14 @@ export default function ManageTests() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+      />
     </div>
   );
 }

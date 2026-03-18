@@ -9,11 +9,21 @@ export default function JobDetails() {
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [importantLinks, setImportantLinks] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchJob = async () => {
       const { data, error } = await supabase.from('jobs').select('*').eq('id', id).single();
-      if (data) setJob(data);
+      if (data) {
+        setJob(data);
+        // Fetch important links for this job
+        const { data: linksData } = await supabase
+          .from('important_links')
+          .select('*')
+          .eq('job_id', data.id)
+          .order('order_index', { ascending: true });
+        if (linksData) setImportantLinks(linksData);
+      }
       if (error) console.error("Error fetching job details:", error);
       setLoading(false);
     };
@@ -24,45 +34,46 @@ export default function JobDetails() {
     if (!job?.description) return { toc: [], sections: [] };
     
     const generatedToc: { id: string, text: string }[] = [];
-    const generatedSections: { id: string, title: string, content: string }[] = [];
+    const generatedSections: { id: string, title: string, content: string, description?: string, type?: string }[] = [];
 
     try {
-      if (job.description.trim().startsWith('[')) {
-        const parsedData = JSON.parse(job.description);
-        
-        parsedData.forEach((sec: any) => {
-          let contentHtml = '';
-          if (sec.type === 'text') {
-            contentHtml = sec.content;
-          } else if (sec.type === 'table' && sec.tableData) {
-            contentHtml = `<div class="overflow-x-auto my-6"><table class="w-full border-collapse border border-gray-200">
-              <thead>
-                <tr class="bg-gray-100 text-gray-700">
-                  ${sec.tableData.headers.map((h: string) => `<th class="border border-gray-200 p-3 text-left font-semibold">${h}</th>`).join('')}
+      const parsedData = JSON.parse(job.description);
+      const sectionsToProcess = Array.isArray(parsedData) ? parsedData : (parsedData.sections || []);
+      
+      sectionsToProcess.forEach((sec: any) => {
+        let contentHtml = '';
+        if (sec.type === 'text') {
+          contentHtml = sec.content;
+        } else if (sec.type === 'table' && sec.tableData) {
+          contentHtml = `<div class="overflow-x-auto my-6"><table class="w-full border-collapse border border-gray-200">
+            <thead>
+              <tr class="bg-gray-100 text-gray-700">
+                ${sec.tableData.headers.map((h: string) => `<th class="border border-gray-200 p-3 text-left font-semibold">${h}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${sec.tableData.rows.map((row: string[]) => `
+                <tr class="hover:bg-gray-50">
+                  ${row.map((cell: string) => `<td class="border border-gray-200 p-3 text-gray-600">${cell}</td>`).join('')}
                 </tr>
-              </thead>
-              <tbody>
-                ${sec.tableData.rows.map((row: string[]) => `
-                  <tr class="hover:bg-gray-50">
-                    ${row.map((cell: string) => `<td class="border border-gray-200 p-3 text-gray-600">${cell}</td>`).join('')}
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table></div>`;
-          }
-          
-          const id = sec.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-          generatedToc.push({ id, text: sec.title });
-          
-          generatedSections.push({
-            id,
-            title: sec.title,
-            content: contentHtml
-          });
-        });
+              `).join('')}
+            </tbody>
+          </table></div>`;
+        }
         
-        return { toc: generatedToc, sections: generatedSections };
-      }
+        const id = sec.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        generatedToc.push({ id, text: sec.title });
+        
+        generatedSections.push({
+          id,
+          title: sec.title,
+          description: sec.description,
+          content: contentHtml,
+          type: sec.type
+        });
+      });
+      
+      return { toc: generatedToc, sections: generatedSections };
     } catch (e) {
       console.error("Failed to parse JSON description, falling back to HTML", e);
     }
@@ -240,6 +251,12 @@ export default function JobDetails() {
                     <h2 className="text-xl font-bold text-gray-900 mb-4">
                       {section.title}
                     </h2>
+                    {(section.type === 'table' || section.type === 'text_table') && section.description && (
+                      <div 
+                        className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed mb-4"
+                        dangerouslySetInnerHTML={{ __html: section.description }}
+                      />
+                    )}
                     <div 
                       className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed
                                  prose-headings:font-bold prose-headings:text-gray-900
@@ -351,19 +368,6 @@ export default function JobDetails() {
               </button>
             </div>
 
-            {/* Important Links */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-              <h3 className="font-bold text-gray-900 p-4 border-b border-gray-200 bg-gray-50">Important Links</h3>
-              <div className="flex flex-col">
-                {['Previous Year Question Paper', 'Syllabus', 'Eligibility Criteria', 'Cut Off', 'Admit Card', 'Exam Analysis', 'Result'].map((link, idx) => (
-                  <a key={idx} href="#" className="p-3 px-4 text-sm text-gray-700 hover:text-[#15b86c] border-b border-gray-100 last:border-0 flex justify-between items-center transition-colors">
-                    {job.title} {link}
-                    <ChevronRight size={16} className="text-gray-400" />
-                  </a>
-                ))}
-              </div>
-            </div>
-
             {/* Quick Overview Card */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
@@ -423,6 +427,21 @@ export default function JobDetails() {
                 </div>
               </div>
             </div>
+
+            {/* Important Links */}
+            {importantLinks.length > 0 && (
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                <h3 className="font-bold text-gray-900 p-4 border-b border-gray-200 bg-gray-50">Important Links</h3>
+                <div className="flex flex-col">
+                  {importantLinks.map((link) => (
+                    <Link key={link.id} to={link.url} className="p-3 px-4 text-sm text-gray-700 hover:text-[#15b86c] border-b border-gray-100 last:border-0 flex justify-between items-center transition-colors">
+                      {link.title}
+                      <ChevronRight size={16} className="text-gray-400" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Promo Card */}
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">

@@ -32,6 +32,8 @@ import ManageHome from "./pages/admin/ManageHome";
 import ManageNotifications from "./pages/admin/ManageNotifications";
 import ManageMenu from "./pages/admin/ManageMenu";
 import ManageMegaMenu from "./pages/admin/ManageMegaMenu";
+import ManageImportantLinks from "./pages/admin/ManageImportantLinks";
+import ManageUsers from "./pages/admin/ManageUsers";
 
 // User Pages
 import UserDashboard from "./pages/user/Dashboard";
@@ -91,6 +93,8 @@ export default function App() {
             <Route path="notifications" element={<ManageNotifications />} />
             <Route path="menu" element={<ManageMenu />} />
             <Route path="mega-menu" element={<ManageMegaMenu />} />
+            <Route path="important-links" element={<ManageImportantLinks />} />
+            <Route path="users" element={<ManageUsers />} />
           </Route>
         </Routes>
       </Router>

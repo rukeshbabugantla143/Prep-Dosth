@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 
 export default function Exams() {
   const [exams, setExams] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [filter, setFilter] = useState("All Exams");
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
@@ -13,7 +14,11 @@ export default function Exams() {
   useEffect(() => {
     const fetchExams = async () => {
       const { data, error } = await supabase.from("exams").select("*");
-      if (data) setExams(data);
+      if (data) {
+        setExams(data);
+        const uniqueCategories = Array.from(new Set(data.map((exam: any) => exam.category).filter(Boolean)));
+        setCategories(['All Exams', ...uniqueCategories] as string[]);
+      }
       if (error) console.error("Error fetching exams:", error);
     };
     fetchExams();
@@ -26,17 +31,8 @@ export default function Exams() {
     }
   }, [searchParams]);
 
-  const filters = [
-    "All Exams",
-    "SSC Exams",
-    "Banking Exams",
-    "Teaching Exams",
-    "Civil Services",
-    "Railway Exams"
-  ];
-
   const filteredExams = exams.filter(exam => {
-    const matchesFilter = filter === "All Exams" || exam.title?.toLowerCase().includes(filter.toLowerCase().replace(' exams', ''));
+    const matchesFilter = filter === "All Exams" || exam.category === filter;
     const matchesSearch = exam.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           exam.description?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
@@ -99,7 +95,7 @@ export default function Exams() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-8">
-        {filters.map(f => (
+        {categories.map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}

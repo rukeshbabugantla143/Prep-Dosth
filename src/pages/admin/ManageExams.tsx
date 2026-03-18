@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Plus, X, PlayCircle } from "lucide-react";
+import { Edit, Trash2, Plus, X, PlayCircle, Copy, Link as LinkIcon } from "lucide-react";
 import JoditEditor from "jodit-react";
+import ConfirmationModal from "../../components/ConfirmationModal";
 
 type SectionType = 'text' | 'table' | 'text_table';
 
@@ -14,13 +15,14 @@ interface Section {
   id: string;
   type: SectionType;
   title: string;
-  description?: string;
   content: string;
+  description?: string;
   tableData?: TableData;
 }
 
 export default function ManageExams() {
   const [exams, setExams] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [currentExam, setCurrentExam] = useState<any>({});
   const [sections, setSections] = useState<Section[]>([]);
@@ -29,6 +31,21 @@ export default function ManageExams() {
   const [officialWebsite, setOfficialWebsite] = useState('');
   const [notificationPdf, setNotificationPdf] = useState('');
   const [youtubeVideos, setYoutubeVideos] = useState<{ url: string; title: string }[]>([]);
+  const [categories, setCategories] = useState<string[]>(['SSC Exams', 'Banking Exams', 'Teaching Exams', 'Civil Services', 'Railway Exams']);
+  const [newCategory, setNewCategory] = useState('');
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   const editor = useRef(null);
   const config = useMemo(() => ({
@@ -36,13 +53,13 @@ export default function ManageExams() {
     placeholder: 'Enter content...',
     height: 300,
     buttons: [
-      'bold', 'italic', 'underline', 'strikethrough', '|',
+      'source', '|', 'bold', 'italic', 'underline', 'strikethrough', '|',
       'brush', 'fill', '|',
       'ul', 'ol', '|',
       'font', 'fontsize', 'paragraph', '|',
-      'align', '|',
+      'align', 'indent', 'outdent', '|',
       'table', 'link', 'image', 'video', '|',
-      'undo', 'redo'
+      'hr', '|', 'undo', 'redo'
     ],
     uploader: {
       insertImageAsBase64URI: true
@@ -60,10 +77,21 @@ export default function ManageExams() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this exam?")) {
-      await supabase.from("exams").delete().eq("id", id);
-      fetchExams();
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Exam",
+      message: "Are you sure you want to delete this exam? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from("exams").delete().eq("id", id);
+          if (error) throw error;
+          fetchExams();
+        } catch (error: any) {
+          console.error("Error deleting exam:", error);
+          alert(`Failed to delete exam: ${error.message || "Unknown error"}`);
+        }
+      }
+    });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -149,6 +177,58 @@ export default function ManageExams() {
     setIsEditing(true);
   };
 
+  const handleDuplicate = (exam: any) => {
+    const { id, ...examToDuplicate } = exam;
+    setCurrentExam(examToDuplicate);
+    // Parse description to set state
+    try {
+      if (exam.description && (exam.description.startsWith('[') || exam.description.startsWith('{'))) {
+        const parsed = JSON.parse(exam.description);
+        if (Array.isArray(parsed)) {
+          setSections(parsed);
+          setStatus('Confirmed');
+          setImportantDates([]);
+        } else {
+          setSections(parsed.sections || []);
+          setStatus(parsed.status || 'Confirmed');
+          setImportantDates(parsed.important_dates || []);
+          setOfficialWebsite(parsed.official_website || '');
+          setNotificationPdf(parsed.notification_pdf || '');
+          
+          const rawVideos = parsed.youtube_videos || [];
+          const formattedVideos = rawVideos.map((v: any) => {
+            if (typeof v === 'string') return { url: v, title: '' };
+            return v;
+          });
+          setYoutubeVideos(formattedVideos);
+        }
+      } else if (exam.description) {
+        setSections([{
+          id: Date.now().toString(),
+          type: 'text',
+          title: 'Legacy Content',
+          content: exam.description
+        }]);
+      } else {
+        setSections([]);
+      }
+    } catch (e) {
+      console.error("Failed to parse description", e);
+      setSections([{
+        id: Date.now().toString(),
+        type: 'text',
+        title: 'Legacy Content',
+        content: exam.description || ''
+      }]);
+    }
+    setIsEditing(true);
+  };
+
+  const filteredExams = exams.filter(exam => 
+    exam.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (exam.category && exam.category.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   const handleAddNew = () => {
     setCurrentExam({});
     setSections([
@@ -200,7 +280,6 @@ export default function ManageExams() {
       id: Date.now().toString(),
       type,
       title: 'New Section',
-      description: '',
       content: '',
       ...(type === 'table' || type === 'text_table' ? { tableData: { headers: ['Column 1', 'Column 2'], rows: [['', '']] } } : {})
     };
@@ -227,10 +306,11 @@ export default function ManageExams() {
   };
 
   const updateTableCell = (sectionId: string, rowIndex: number, colIndex: number, value: string) => {
-    setSections(sections.map(s => {
+    setSections(prevSections => prevSections.map(s => {
       if (s.id === sectionId && s.tableData) {
-        const newRows = [...s.tableData.rows];
-        newRows[rowIndex][colIndex] = value;
+        const newRows = s.tableData.rows.map((row, rIdx) => 
+          rIdx === rowIndex ? row.map((cell, cIdx) => cIdx === colIndex ? value : cell) : row
+        );
         return { ...s, tableData: { ...s.tableData, rows: newRows } };
       }
       return s;
@@ -283,9 +363,18 @@ export default function ManageExams() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Manage Exams</h1>
-        <button onClick={handleAddNew} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
-          <Plus size={20} /> Add New Exam
-        </button>
+        <div className="flex gap-4">
+          <input 
+            type="text" 
+            placeholder="Search exams..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          <button onClick={handleAddNew} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
+            <Plus size={20} /> Add New Exam
+          </button>
+        </div>
       </div>
 
       {isEditing && (
@@ -293,15 +382,19 @@ export default function ManageExams() {
           <h2 className="text-2xl font-bold mb-6 text-gray-800">{currentExam.id ? "Edit Exam" : "Add New Exam"}</h2>
           <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Exam Title / Category</label>
-              <input list="exam-categories" placeholder="e.g. SSC CGL Tier 1" value={currentExam.title || ""} onChange={e => setCurrentExam({...currentExam, title: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" required />
-              <datalist id="exam-categories">
-                <option value="SSC Exams" />
-                <option value="Banking Exams" />
-                <option value="Teaching Exams" />
-                <option value="Civil Services" />
-                <option value="Railway Exams" />
-              </datalist>
+              <label className="block text-sm font-medium text-gray-700">Exam Title</label>
+              <input placeholder="e.g. ECET 2026" value={currentExam.title || ""} onChange={e => setCurrentExam({...currentExam, title: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" required />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Category</label>
+              <div className="flex gap-2">
+                <select value={currentExam.category || ""} onChange={e => setCurrentExam({...currentExam, category: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                  <option value="">Select Category</option>
+                  {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+                <input type="text" placeholder="New Category" value={newCategory} onChange={e => setNewCategory(e.target.value)} className="border p-3 rounded-lg w-32 focus:ring-2 focus:ring-blue-500 outline-none" />
+                <button type="button" onClick={() => { if(newCategory && !categories.includes(newCategory)) { setCategories([...categories, newCategory]); setNewCategory(''); } }} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">+</button>
+              </div>
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Exam Date</label>
@@ -454,15 +547,6 @@ export default function ManageExams() {
                       className="border p-2 rounded-lg w-full md:w-1/2 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
-                  <div className="mb-4 pr-8">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Section Description</label>
-                    <input 
-                      type="text" 
-                      value={section.description || ''} 
-                      onChange={(e) => updateSection(section.id, { description: e.target.value })}
-                      className="border p-2 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                  </div>
 
                   {section.type === 'text' || section.type === 'text_table' ? (
                     <div className="mb-4">
@@ -477,6 +561,15 @@ export default function ManageExams() {
                   
                   {section.type === 'table' || section.type === 'text_table' ? (
                     <div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <input
+                          type="text"
+                          value={section.description || ''}
+                          onChange={(e) => updateSection(section.id, { description: e.target.value })}
+                          className="border p-2 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Table Data</label>
                       <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
                         <table className="w-full text-left bg-white">
@@ -505,12 +598,28 @@ export default function ManageExams() {
                               <tr key={rIndex} className="border-b border-gray-100 hover:bg-gray-50">
                                 {row.map((cell, cIndex) => (
                                   <td key={cIndex} className="p-2 border-r border-gray-200">
-                                    <input 
-                                      type="text" 
-                                      value={cell}
-                                      onChange={(e) => updateTableCell(section.id, rIndex, cIndex, e.target.value)}
-                                      className="w-full p-1.5 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                                    />
+                                    <div className="flex gap-1">
+                                      <input 
+                                        type="text" 
+                                        value={cell}
+                                        onChange={(e) => updateTableCell(section.id, rIndex, cIndex, e.target.value)}
+                                        className="w-full p-1.5 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                      />
+                                      <button 
+                                        type="button" 
+                                        onClick={() => {
+                                          const linkText = prompt("Enter link text:", "Click here");
+                                          const url = prompt("Enter URL:", "https://");
+                                          if (url && linkText) {
+                                            const newCell = `${cell} <a href="${url}" target="_blank" class="text-blue-600 underline">${linkText}</a>`;
+                                            updateTableCell(section.id, rIndex, cIndex, newCell);
+                                          }
+                                        }}
+                                        className="text-xs bg-gray-100 px-1 rounded hover:bg-gray-200"
+                                      >
+                                        <LinkIcon size={14} />
+                                      </button>
+                                    </div>
                                   </td>
                                 ))}
                                 <td className="p-2 text-center">
@@ -548,27 +657,38 @@ export default function ManageExams() {
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100 text-gray-600">
               <th className="p-4 font-semibold">Title</th>
+              <th className="p-4 font-semibold">Category</th>
               <th className="p-4 font-semibold">Date</th>
               <th className="p-4 font-semibold text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {exams.map(exam => (
+            {filteredExams.map(exam => (
               <tr key={exam.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
                 <td className="p-4 font-medium text-gray-800">{exam.title}</td>
+                <td className="p-4 text-gray-600">{exam.category || 'N/A'}</td>
                 <td className="p-4 text-gray-600">{new Date(exam.date).toLocaleDateString()}</td>
                 <td className="p-4 flex justify-end gap-3">
                   <button onClick={() => handleEdit(exam)} className="text-blue-600 hover:text-blue-800 p-2 bg-blue-50 rounded-lg transition"><Edit size={18} /></button>
+                  <button onClick={() => handleDuplicate(exam)} className="text-green-600 hover:text-green-800 p-2 bg-green-50 rounded-lg transition"><Copy size={18} /></button>
                   <button onClick={() => handleDelete(exam.id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
                 </td>
               </tr>
             ))}
-            {exams.length === 0 && (
-              <tr><td colSpan={3} className="p-8 text-center text-gray-500">No exams found. Add one above.</td></tr>
+            {filteredExams.length === 0 && (
+              <tr><td colSpan={4} className="p-8 text-center text-gray-500">No exams found.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+      />
     </div>
   );
 }

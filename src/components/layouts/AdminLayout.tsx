@@ -1,6 +1,6 @@
 import { Outlet, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { LayoutDashboard, Briefcase, FileText, CheckSquare, Home, LogOut, HelpCircle, Users, Crown, Settings, Menu } from "lucide-react";
+import { LayoutDashboard, Briefcase, FileText, CheckSquare, Home, LogOut, Users, Crown, Settings, Menu, Activity, BookOpen } from "lucide-react";
 
 export default function AdminLayout() {
   const { logout } = useAuth();
@@ -22,22 +22,22 @@ export default function AdminLayout() {
           <Link to="/admin/tests" className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
             <CheckSquare size={20} /> <span>Mock Tests</span>
           </Link>
-          <Link to="/admin" className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
-            <HelpCircle size={20} /> <span>Questions</span>
+          <Link to="/admin/notifications" className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
+            <Activity size={20} /> <span>Notifications</span>
           </Link>
           <Link to="/admin/home" className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
-            <Home size={20} /> <span>Hero Section</span>
-          </Link>
-          <Link to="/admin/home" className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
-            <Home size={20} /> <span>Home Sections</span>
+            <Home size={20} /> <span>Manage Home</span>
           </Link>
           <Link to="/admin/menu" className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
             <Menu size={20} /> <span>Menu Management</span>
           </Link>
           <Link to="/admin/mega-menu" className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
-            <LayoutDashboard size={20} /> <span>Mega Menu Content</span>
+            <BookOpen size={20} /> <span>Mega Menu Content</span>
           </Link>
-          <Link to="/admin" className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
+          <Link to="/admin/important-links" className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
+            <FileText size={20} /> <span>Important Links</span>
+          </Link>
+          <Link to="/admin/users" className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
             <Users size={20} /> <span>Users</span>
           </Link>
           <Link to="/admin" className="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded text-yellow-500">

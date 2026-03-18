@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
-import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../services/supabaseClient";
 
 export default function AttemptTest() {
   const { id } = useParams();
-  const { token } = useAuth();
   const navigate = useNavigate();
   
   const [test, setTest] = useState<any>(null);
@@ -15,18 +13,15 @@ export default function AttemptTest() {
 
   useEffect(() => {
     const fetchTest = async () => {
-      try {
-        const res = await axios.get(`/api/tests/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setTest(res.data);
-        setTimeLeft(res.data.timeLimit * 60);
-      } catch (error) {
-        console.error("Failed to fetch test", error);
+      const { data, error } = await supabase.from("tests").select("*").eq("id", id).single();
+      if (data) {
+        setTest(data);
+        setTimeLeft(data.timeLimit * 60);
       }
+      if (error) console.error("Failed to fetch test", error);
     };
     fetchTest();
-  }, [id, token]);
+  }, [id]);
 
   useEffect(() => {
     if (timeLeft === null || result) return;
@@ -48,14 +43,13 @@ export default function AttemptTest() {
   };
 
   const handleSubmit = async () => {
-    try {
-      const res = await axios.post(`/api/tests/${id}/submit`, { answers }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setResult(res.data);
-    } catch (error) {
-      console.error("Failed to submit test", error);
-    }
+    let score = 0;
+    test.questions.forEach((q: any) => {
+      if (answers[q.id] === q.correctAnswer) {
+        score += (test.marks / test.questions.length);
+      }
+    });
+    setResult({ score, totalMarks: test.marks });
   };
 
   if (!test) return <div className="text-center mt-20 text-xl font-medium">Loading test...</div>;
@@ -92,17 +86,17 @@ export default function AttemptTest() {
 
       <div className="space-y-8">
         {test.questions.map((q: any, index: number) => (
-          <div key={q._id} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+          <div key={q.id} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
             <h3 className="text-lg font-bold text-gray-800 mb-6"><span className="text-blue-600 mr-2">Q{index + 1}.</span> {q.questionText}</h3>
             <div className="space-y-3">
               {q.options.map((opt: string, i: number) => (
-                <label key={i} className={`flex items-center p-4 rounded-xl border cursor-pointer transition ${answers[q._id] === opt ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                <label key={i} className={`flex items-center p-4 rounded-xl border cursor-pointer transition ${answers[q.id] === opt ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
                   <input
                     type="radio"
-                    name={`question-${q._id}`}
+                    name={`question-${q.id}`}
                     value={opt}
-                    checked={answers[q._id] === opt}
-                    onChange={() => handleOptionChange(q._id, opt)}
+                    checked={answers[q.id] === opt}
+                    onChange={() => handleOptionChange(q.id, opt)}
                     className="w-5 h-5 text-blue-600 focus:ring-blue-500 mr-4"
                   />
                   <span className="text-gray-700 font-medium">{opt}</span>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../services/supabaseClient";
 import { Edit, Trash2, Plus, Users, Landmark, BookOpen, GraduationCap, Train, Shield, Cpu, Activity, Briefcase, Scale, FileText, PlayCircle, Building, Map, Award } from "lucide-react";
+import ImageUpload from "../../components/common/ImageUpload";
+import ConfirmationModal from "../../components/ConfirmationModal";
 
 const ICON_OPTIONS = {
   Users: <Users size={18} />,
@@ -20,12 +22,19 @@ const ICON_OPTIONS = {
   Award: <Award size={18} />
 };
 
+interface SubItem {
+  label: string;
+  icon_name?: string;
+  image?: string;
+}
+
 interface MegaMenuItem {
   id?: string;
   menu_type: 'jobs' | 'exams' | 'tests';
   category_title: string;
   icon_name: string;
-  items: string[];
+  category_image?: string;
+  items: SubItem[];
   order_index: number;
 }
 
@@ -37,10 +46,28 @@ export default function ManageMegaMenu() {
     menu_type: 'jobs',
     category_title: '',
     icon_name: 'Users',
+    category_image: '',
     items: [],
     order_index: 0
   });
-  const [newItemText, setNewItemText] = useState("");
+  const [newItem, setNewItem] = useState<SubItem>({
+    label: '',
+    icon_name: 'Award',
+    image: ''
+  });
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   const fetchMegaMenu = async () => {
     const { data, error } = await supabase
@@ -59,6 +86,7 @@ export default function ManageMegaMenu() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = { ...currentItem, menu_type: activeTab };
+    console.log("Saving payload:", payload); // Debug log
     
     if (currentItem.id) {
       await supabase.from("mega_menu").update(payload).eq("id", currentItem.id);
@@ -68,24 +96,35 @@ export default function ManageMegaMenu() {
     }
     
     setIsEditing(false);
-    setCurrentItem({ menu_type: activeTab, category_title: '', icon_name: 'Users', items: [], order_index: 0 });
+    setCurrentItem({ menu_type: activeTab, category_title: '', icon_name: 'Users', category_image: '', items: [], order_index: 0 });
     fetchMegaMenu();
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this category?")) {
-      await supabase.from("mega_menu").delete().eq("id", id);
-      fetchMegaMenu();
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Category",
+      message: "Are you sure you want to delete this category? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from("mega_menu").delete().eq("id", id);
+          if (error) throw error;
+          fetchMegaMenu();
+        } catch (error: any) {
+          console.error("Error deleting category:", error);
+          alert(`Failed to delete category: ${error.message || "Unknown error"}`);
+        }
+      }
+    });
   };
 
   const addItemToCategory = () => {
-    if (newItemText.trim()) {
+    if (newItem.label.trim()) {
       setCurrentItem({
         ...currentItem,
-        items: [...currentItem.items, newItemText.trim()]
+        items: [...currentItem.items, { ...newItem }]
       });
-      setNewItemText("");
+      setNewItem({ label: '', icon_name: 'Award', image: '' });
     }
   };
 
@@ -122,7 +161,7 @@ export default function ManageMegaMenu() {
         ))}
       </div>
 
-      {isEditing && (
+        {isEditing && (
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
           <h3 className="text-xl font-bold mb-6 text-gray-800">{currentItem.id ? "Edit Category" : "Add New Category"}</h3>
           <form onSubmit={handleSave} className="space-y-6">
@@ -150,31 +189,76 @@ export default function ManageMegaMenu() {
                   ))}
                 </select>
               </div>
+                <div className="md:col-span-2">
+                <ImageUpload 
+                  label="Category Icon/Image (Optional - Overrides Icon Selection)" 
+                  currentImage={currentItem.category_image} 
+                  onUploadSuccess={(url) => setCurrentItem({...currentItem, category_image: url})} 
+                />
+              </div>
             </div>
 
-            <div className="space-y-4">
-              <label className="text-sm font-semibold text-gray-600">Sub-items (Links)</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder="Add an item (e.g. SSC CGL)" 
-                  value={newItemText} 
-                  onChange={e => setNewItemText(e.target.value)} 
-                  className="border p-3 rounded-lg flex-1 focus:ring-2 focus:ring-[#15b86c] outline-none" 
-                />
+            <div className="space-y-4 border-t pt-6">
+              <label className="text-sm font-bold text-gray-800">Add Sub-items (Links)</label>
+              <div className="bg-gray-50 p-4 rounded-xl space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500">Item Label</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. SSC CGL" 
+                      value={newItem.label} 
+                      onChange={e => setNewItem({...newItem, label: e.target.value})} 
+                      className="border p-2 rounded-lg w-full text-sm outline-none focus:ring-1 focus:ring-[#15b86c]" 
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500">Item Icon</label>
+                    <select 
+                      value={newItem.icon_name} 
+                      onChange={e => setNewItem({...newItem, icon_name: e.target.value})} 
+                      className="border p-2 rounded-lg w-full text-sm outline-none bg-white"
+                    >
+                      {Object.keys(ICON_OPTIONS).map(icon => (
+                        <option key={icon} value={icon}>{icon}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <ImageUpload 
+                      label="Item Custom Icon (Optional)" 
+                      currentImage={newItem.image} 
+                      onUploadSuccess={(url) => setNewItem({...newItem, image: url})} 
+                    />
+                  </div>
+                </div>
                 <button 
                   type="button" 
                   onClick={addItemToCategory}
-                  className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition"
+                  className="w-full bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-700 transition text-sm font-bold"
                 >
-                  Add
+                  Add Item to List
                 </button>
               </div>
-              <div className="flex flex-wrap gap-2">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {currentItem.items.map((item, idx) => (
-                  <div key={idx} className="bg-gray-100 px-3 py-1.5 rounded-full flex items-center gap-2 text-sm font-medium text-gray-700">
-                    {item}
-                    <button type="button" onClick={() => removeItemFromCategory(idx)} className="text-red-500 hover:text-red-700 font-bold">×</button>
+                  <div key={idx} className="bg-white border border-gray-200 p-3 rounded-xl flex items-center justify-between group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                        {item.image ? (
+                          <img src={item.image} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-gray-400">
+                            {ICON_OPTIONS[item.icon_name as keyof typeof ICON_OPTIONS] || <Award size={14} />}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-gray-700">{item.label}</span>
+                    </div>
+                    <button type="button" onClick={() => removeItemFromCategory(idx)} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition">
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -191,6 +275,14 @@ export default function ManageMegaMenu() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredItems.map(item => (
           <div key={item.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
+            {item.image && (
+              <img 
+                src={item.image} 
+                alt={item.category_title} 
+                className="w-full h-32 object-cover rounded-xl mb-4" 
+                referrerPolicy="no-referrer"
+              />
+            )}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-[#15b86c]/10 text-[#15b86c] rounded-lg">
@@ -207,7 +299,7 @@ export default function ManageMegaMenu() {
               {item.items.slice(0, 5).map((sub, idx) => (
                 <div key={idx} className="text-sm text-gray-500 flex items-center gap-2">
                   <div className="w-1 h-1 bg-gray-300 rounded-full" />
-                  {sub}
+                  {typeof sub === 'string' ? sub : sub.label}
                 </div>
               ))}
               {item.items.length > 5 && (
@@ -222,6 +314,14 @@ export default function ManageMegaMenu() {
           </div>
         )}
       </div>
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+      />
     </div>
   );
 }

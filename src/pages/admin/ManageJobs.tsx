@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Plus, X } from "lucide-react";
+import { Edit, Trash2, Plus, X, Link as LinkIcon } from "lucide-react";
 import JoditEditor from "jodit-react";
+import ConfirmationModal from "../../components/ConfirmationModal";
 
-type SectionType = 'text' | 'table';
+type SectionType = 'text' | 'table' | 'text_table';
 
 interface TableData {
   headers: string[];
@@ -15,6 +16,7 @@ interface Section {
   title: string;
   type: SectionType;
   content: string;
+  description?: string;
   tableData?: TableData;
 }
 
@@ -23,12 +25,37 @@ export default function ManageJobs() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentJob, setCurrentJob] = useState<any>({});
   const [sections, setSections] = useState<Section[]>([]);
+  const [importantDates, setImportantDates] = useState<{ label: string; date: string; icon?: string }[]>([]);
+  const [categories, setCategories] = useState<string[]>(['Railway', 'Bank', 'Defence', 'State', 'Central Govt', 'SSC', 'UPSC']);
+  const [newCategory, setNewCategory] = useState('');
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
   
   const editor = useRef(null);
   const config = useMemo(() => ({
     readonly: false,
     placeholder: 'Enter content...',
     height: 300,
+    buttons: [
+      'source', '|', 'bold', 'italic', 'underline', 'strikethrough', '|',
+      'brush', 'fill', '|',
+      'ul', 'ol', '|',
+      'font', 'fontsize', 'paragraph', '|',
+      'align', 'indent', 'outdent', '|',
+      'table', 'link', 'image', 'video', '|',
+      'hr', '|', 'undo', 'redo'
+    ],
     uploader: {
       insertImageAsBase64URI: true
     }
@@ -45,19 +72,34 @@ export default function ManageJobs() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this job?")) {
-      await supabase.from("jobs").delete().eq("id", id);
-      fetchJobs();
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Job",
+      message: "Are you sure you want to delete this job? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase.from("jobs").delete().eq("id", id);
+          if (error) throw error;
+          fetchJobs();
+        } catch (error: any) {
+          console.error("Error deleting job:", error);
+          alert(`Failed to delete job: ${error.message || "Unknown error"}`);
+        }
+      }
+    });
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Convert sections to JSON string
-    const jobToSave = {
-      ...currentJob,
-      description: JSON.stringify(sections)
+    // Serialize sections, important dates to JSON string for description
+    const serializedDescription = JSON.stringify({
+      sections,
+      important_dates: importantDates
+    });
+    const jobToSave = { 
+      ...currentJob, 
+      description: serializedDescription 
     };
 
     let error;
@@ -78,6 +120,7 @@ export default function ManageJobs() {
     setIsEditing(false);
     setCurrentJob({});
     setSections([]);
+    setImportantDates([]);
     fetchJobs();
   };
 
@@ -85,19 +128,26 @@ export default function ManageJobs() {
     setCurrentJob(job);
     
     // Parse description into sections
-    if (job.description) {
-      try {
-        if (job.description.trim().startsWith('[')) {
-          setSections(JSON.parse(job.description));
+    try {
+      if (job.description && (job.description.startsWith('[') || job.description.startsWith('{'))) {
+        const parsed = JSON.parse(job.description);
+        if (Array.isArray(parsed)) {
+          setSections(parsed);
+          setImportantDates([]);
         } else {
-          // Legacy HTML
-          setSections([{ id: Date.now().toString(), title: 'Details', type: 'text', content: job.description }]);
+          setSections(parsed.sections || []);
+          setImportantDates(parsed.important_dates || []);
         }
-      } catch (e) {
+      } else if (job.description) {
         setSections([{ id: Date.now().toString(), title: 'Details', type: 'text', content: job.description }]);
+        setImportantDates([]);
+      } else {
+        setSections([]);
+        setImportantDates([]);
       }
-    } else {
-      setSections([]);
+    } catch (e) {
+      setSections([{ id: Date.now().toString(), title: 'Details', type: 'text', content: job.description || '' }]);
+      setImportantDates([]);
     }
     
     setIsEditing(true);
@@ -110,17 +160,36 @@ export default function ManageJobs() {
       { id: Date.now().toString() + '2', title: 'Vacancy Details', type: 'table', content: '', tableData: { headers: ['Category', 'Vacancies'], rows: [['General (UR)', '0'], ['OBC', '0'], ['SC', '0'], ['ST', '0']] } },
       { id: Date.now().toString() + '3', title: 'Eligibility Criteria', type: 'text', content: '<p><strong>Educational Qualification:</strong> ...</p><p><strong>Age Limit:</strong> ...</p>' }
     ]);
+    setImportantDates([
+      { label: 'Notification Released', date: new Date().toISOString().split('T')[0], icon: 'Bell' },
+      { label: 'Application Start', date: '', icon: 'Calendar' }
+    ]);
     setIsEditing(true);
+  };
+
+  // Important Dates Helpers
+  const addImportantDate = () => {
+    setImportantDates([...importantDates, { label: '', date: '', icon: 'Clock' }]);
+  };
+
+  const removeImportantDate = (index: number) => {
+    setImportantDates(importantDates.filter((_, i) => i !== index));
+  };
+
+  const updateImportantDate = (index: number, field: 'label' | 'date' | 'icon', value: string) => {
+    const newDates = [...importantDates];
+    (newDates[index] as any)[field] = value;
+    setImportantDates(newDates);
   };
 
   // Section Builder Helpers
   const addSection = (type: SectionType) => {
     const newSection: Section = {
       id: Date.now().toString(),
-      title: type === 'text' ? 'New Text Section' : 'New Table Section',
+      title: 'New Section',
       type,
       content: '',
-      tableData: type === 'table' ? { headers: ['Column 1', 'Column 2'], rows: [['Row 1', 'Row 1']] } : undefined
+      ...(type === 'table' || type === 'text_table' ? { tableData: { headers: ['Column 1', 'Column 2'], rows: [['', '']] } } : {})
     };
     setSections([...sections, newSection]);
   };
@@ -145,10 +214,11 @@ export default function ManageJobs() {
   };
 
   const updateTableCell = (sectionId: string, rowIndex: number, colIndex: number, value: string) => {
-    setSections(sections.map(s => {
+    setSections(prevSections => prevSections.map(s => {
       if (s.id === sectionId && s.tableData) {
-        const newRows = [...s.tableData.rows];
-        newRows[rowIndex][colIndex] = value;
+        const newRows = s.tableData.rows.map((row, rIdx) => 
+          rIdx === rowIndex ? row.map((cell, cIdx) => cIdx === colIndex ? value : cell) : row
+        );
         return { ...s, tableData: { ...s.tableData, rows: newRows } };
       }
       return s;
@@ -216,16 +286,14 @@ export default function ManageJobs() {
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Department / Category</label>
-              <input list="job-categories" placeholder="Select or type new category (e.g. Railway, Bank)" value={currentJob.department || ""} onChange={e => setCurrentJob({...currentJob, department: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" required />
-              <datalist id="job-categories">
-                <option value="Railway" />
-                <option value="Bank" />
-                <option value="Defence" />
-                <option value="State" />
-                <option value="Central Govt" />
-                <option value="SSC" />
-                <option value="UPSC" />
-              </datalist>
+              <div className="flex gap-2">
+                <select value={currentJob.department || ""} onChange={e => setCurrentJob({...currentJob, department: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                  <option value="">Select Category</option>
+                  {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+                <input type="text" placeholder="New Category" value={newCategory} onChange={e => setNewCategory(e.target.value)} className="border p-3 rounded-lg w-32 focus:ring-2 focus:ring-blue-500 outline-none" />
+                <button type="button" onClick={() => { if(newCategory && !categories.includes(newCategory)) { setCategories([...categories, newCategory]); setNewCategory(''); } }} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">+</button>
+              </div>
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Total Posts / Vacancies</label>
@@ -244,12 +312,64 @@ export default function ManageJobs() {
               <input type="text" placeholder="e.g. Gen/OBC: ₹100, SC/ST: Nil" value={currentJob.fee || ""} onChange={e => setCurrentJob({...currentJob, fee: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" required />
             </div>
             
+            <div className="md:col-span-2 space-y-4 bg-blue-50 p-6 rounded-xl border border-blue-100">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-blue-800">Custom Important Dates</h3>
+                <button type="button" onClick={addImportantDate} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center gap-1">
+                  <Plus size={16}/> Add Date
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {importantDates.map((date, idx) => (
+                  <div key={idx} className="flex gap-2 items-end bg-white p-3 rounded-lg border border-blue-200 shadow-sm">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Label</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Admit Card" 
+                        value={date.label} 
+                        onChange={e => updateImportantDate(idx, 'label', e.target.value)}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Date</label>
+                      <input 
+                        type="date" 
+                        value={date.date} 
+                        onChange={e => updateImportantDate(idx, 'date', e.target.value)}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Icon</label>
+                      <select 
+                        value={date.icon || 'Clock'} 
+                        onChange={e => updateImportantDate(idx, 'icon', e.target.value)}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white"
+                      >
+                        <option value="Bell">Bell (Notification)</option>
+                        <option value="Calendar">Calendar (Exam)</option>
+                        <option value="FileText">File (Admit Card)</option>
+                        <option value="CheckCircle2">Check (Result)</option>
+                        <option value="Clock">Clock (General)</option>
+                      </select>
+                    </div>
+                    <button type="button" onClick={() => removeImportantDate(idx)} className="text-red-500 hover:text-red-700 p-2">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="md:col-span-2 space-y-6 mt-4">
               <div className="flex justify-between items-center border-b pb-2">
                 <h3 className="text-lg font-bold text-gray-800">Content Sections</h3>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => addSection('text')} className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-100 transition flex items-center gap-1"><Plus size={16}/> Text Section</button>
                   <button type="button" onClick={() => addSection('table')} className="bg-green-50 text-green-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-100 transition flex items-center gap-1"><Plus size={16}/> Table Section</button>
+                  <button type="button" onClick={() => addSection('text_table')} className="bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-purple-100 transition flex items-center gap-1"><Plus size={16}/> Text+Table Section</button>
                 </div>
               </div>
 
@@ -269,8 +389,8 @@ export default function ManageJobs() {
                     />
                   </div>
 
-                  {section.type === 'text' ? (
-                    <div>
+                  {section.type === 'text' || section.type === 'text_table' ? (
+                    <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
                       <JoditEditor
                         value={section.content}
@@ -278,8 +398,19 @@ export default function ManageJobs() {
                         onBlur={newContent => updateSection(section.id, { content: newContent })}
                       />
                     </div>
-                  ) : (
+                  ) : null}
+                  
+                  {section.type === 'table' || section.type === 'text_table' ? (
                     <div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <input
+                          type="text"
+                          value={section.description || ''}
+                          onChange={(e) => updateSection(section.id, { description: e.target.value })}
+                          className="border p-2 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Table Data</label>
                       <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
                         <table className="w-full text-left bg-white">
@@ -308,12 +439,28 @@ export default function ManageJobs() {
                               <tr key={rIndex} className="border-b border-gray-100 hover:bg-gray-50">
                                 {row.map((cell, cIndex) => (
                                   <td key={cIndex} className="p-2 border-r border-gray-200">
-                                    <input 
-                                      type="text" 
-                                      value={cell}
-                                      onChange={(e) => updateTableCell(section.id, rIndex, cIndex, e.target.value)}
-                                      className="w-full p-1.5 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                                    />
+                                    <div className="flex gap-1">
+                                      <input 
+                                        type="text" 
+                                        value={cell}
+                                        onChange={(e) => updateTableCell(section.id, rIndex, cIndex, e.target.value)}
+                                        className="w-full p-1.5 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                      />
+                                      <button 
+                                        type="button" 
+                                        onClick={() => {
+                                          const linkText = prompt("Enter link text:", "Click here");
+                                          const url = prompt("Enter URL:", "https://");
+                                          if (url && linkText) {
+                                            const newCell = `${cell} <a href="${url}" target="_blank" class="text-blue-600 underline">${linkText}</a>`;
+                                            updateTableCell(section.id, rIndex, cIndex, newCell);
+                                          }
+                                        }}
+                                        className="text-xs bg-gray-100 px-1 rounded hover:bg-gray-200"
+                                      >
+                                        <LinkIcon size={14} />
+                                      </button>
+                                    </div>
                                   </td>
                                 ))}
                                 <td className="p-2 text-center">
@@ -328,7 +475,7 @@ export default function ManageJobs() {
                         <Plus size={16} /> Add Row
                       </button>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -378,6 +525,14 @@ export default function ManageJobs() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+      />
     </div>
   );
 }
