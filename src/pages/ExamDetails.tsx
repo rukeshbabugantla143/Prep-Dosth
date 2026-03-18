@@ -31,15 +31,15 @@ export default function ExamDetails() {
     fetchExam();
   }, [id]);
 
-  const { toc, sections, status, customDates, officialWebsite, notificationPdf, youtubeVideos } = React.useMemo(() => {
-    if (!exam?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialWebsite: '', notificationPdf: '', youtubeVideos: [] };
+  const { toc, sections, status, customDates, officialLinks, notificationLinks, youtubeVideos } = React.useMemo(() => {
+    if (!exam?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [], youtubeVideos: [] };
     
     const generatedToc: { id: string, text: string }[] = [];
     const generatedSections: any[] = [];
     let examStatus = 'Confirmed';
-    let examCustomDates: { label: string, date: string, icon?: string }[] = [];
-    let examOfficialWebsite = '';
-    let examNotificationPdf = '';
+    let examCustomDates: { label: string, date: string, icon?: string, status?: string }[] = [];
+    let examOfficialLinks: { label: string, url: string, color?: string }[] = [];
+    let examNotificationLinks: { label: string, url: string, color?: string }[] = [];
     let examYoutubeVideos: { url: string, title: string }[] = [];
 
     try {
@@ -51,8 +51,21 @@ export default function ExamDetails() {
         if (!Array.isArray(parsedData)) {
           examStatus = parsedData.status || 'Confirmed';
           examCustomDates = parsedData.important_dates || [];
-          examOfficialWebsite = parsedData.official_website || '';
-          examNotificationPdf = parsedData.notification_pdf || '';
+          
+          // Handle multiple links
+          if (parsedData.official_links) {
+            examOfficialLinks = parsedData.official_links.map((l: any) => ({ ...l, color: l.color || 'blue' }));
+          } else if (parsedData.official_website) {
+            examOfficialLinks = [{ label: 'Official Website', url: parsedData.official_website, color: 'blue' }];
+          } else if (exam.link) {
+            examOfficialLinks = [{ label: 'Official Website', url: exam.link, color: 'blue' }];
+          }
+
+          if (parsedData.notification_links) {
+            examNotificationLinks = parsedData.notification_links.map((l: any) => ({ ...l, color: l.color || 'red' }));
+          } else if (parsedData.notification_pdf) {
+            examNotificationLinks = [{ label: 'Notification PDF', url: parsedData.notification_pdf, color: 'red' }];
+          }
           
           // Handle both legacy string array and new object array
           const rawVideos = parsedData.youtube_videos || [];
@@ -81,8 +94,8 @@ export default function ExamDetails() {
           sections: generatedSections, 
           status: examStatus, 
           customDates: examCustomDates,
-          officialWebsite: examOfficialWebsite,
-          notificationPdf: examNotificationPdf,
+          officialLinks: examOfficialLinks,
+          notificationLinks: examNotificationLinks,
           youtubeVideos: examYoutubeVideos
         };
       }
@@ -148,11 +161,23 @@ export default function ExamDetails() {
       sections: generatedSections, 
       status: 'Confirmed', 
       customDates: [],
-      officialWebsite: '',
-      notificationPdf: '',
+      officialLinks: exam.link ? [{ label: 'Official Website', url: exam.link }] : [],
+      notificationLinks: [],
       youtubeVideos: []
     };
-  }, [exam?.description]);
+  }, [exam?.description, exam?.link]);
+
+  const getColorClasses = (color?: string) => {
+    switch (color) {
+      case 'red': return 'bg-red-50 text-red-700 hover:bg-red-100 border-red-100';
+      case 'green': return 'bg-green-50 text-green-700 hover:bg-green-100 border-green-100';
+      case 'orange': return 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-100';
+      case 'purple': return 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-100';
+      case 'gray': return 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-100';
+      case 'blue':
+      default: return 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-100';
+    }
+  };
 
   if (loading) {
     return (
@@ -299,9 +324,13 @@ export default function ExamDetails() {
                           </thead>
                           <tbody>
                             {section.tableData.rows.map((row: string[], i: number) => (
-                              <tr key={i}>
+                              <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                                 {row.map((cell: string, j: number) => (
-                                  <td key={j} className="border border-gray-200 px-4 py-3 text-sm text-gray-700" dangerouslySetInnerHTML={{ __html: cell }}></td>
+                                  <td 
+                                    key={j} 
+                                    className={`border border-gray-200 px-4 py-3 text-sm text-gray-700 ${section.tableData.boldCells?.[i]?.[j] ? 'font-bold' : ''}`} 
+                                    dangerouslySetInnerHTML={{ __html: cell }}
+                                  ></td>
                                 ))}
                               </tr>
                             ))}
@@ -506,9 +535,13 @@ export default function ExamDetails() {
                         </div>
                         <div className="flex items-center gap-2 mb-1">
                           <p className="text-sm text-gray-500 font-medium">{d.label}</p>
-                          {d.label.toLowerCase().includes('exam date') && (
-                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${status === 'Confirmed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                              {status}
+                          {(d.status || (d.label.toLowerCase().includes('exam date') && status)) && (
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
+                              (d.status === 'Confirmed' || (!d.status && status === 'Confirmed')) 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {d.status || status}
                             </span>
                           )}
                         </div>
@@ -565,19 +598,19 @@ export default function ExamDetails() {
                 </h3>
               </div>
               <div className="p-4 space-y-3">
-                {officialWebsite && (
-                  <a href={officialWebsite} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition font-medium text-sm">
-                    Official Website
+                {officialLinks.map((link: any, idx: number) => (
+                  <a key={`off-${idx}`} href={link.url.startsWith('http') ? link.url : `https://${link.url}`} target="_blank" rel="noopener noreferrer" className={`flex items-center justify-between p-3 rounded-lg transition font-medium text-sm border ${getColorClasses(link.color)}`}>
+                    {link.label || 'Official Website'}
                     <ExternalLink size={16} />
                   </a>
-                )}
-                {notificationPdf && (
-                  <a href={notificationPdf} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition font-medium text-sm">
-                    Notification PDF
+                ))}
+                {notificationLinks.map((link: any, idx: number) => (
+                  <a key={`not-${idx}`} href={link.url.startsWith('http') ? link.url : `https://${link.url}`} target="_blank" rel="noopener noreferrer" className={`flex items-center justify-between p-3 rounded-lg transition font-medium text-sm border ${getColorClasses(link.color)}`}>
+                    {link.label || 'Notification PDF'}
                     <Download size={16} />
                   </a>
-                )}
-                {!officialWebsite && !notificationPdf && exam.link && (
+                ))}
+                {officialLinks.length === 0 && notificationLinks.length === 0 && exam.link && (
                   <a href={exam.link} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition font-medium text-sm">
                     Official Link
                     <ExternalLink size={16} />

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { Building2, Users, GraduationCap, Calendar, IndianRupee, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, PlayCircle, Download } from 'lucide-react';
+import { Building2, Users, GraduationCap, Calendar, IndianRupee, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, PlayCircle, Download, Bell } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function JobDetails() {
@@ -30,50 +30,63 @@ export default function JobDetails() {
     fetchJob();
   }, [id]);
 
-  const { toc, sections } = React.useMemo(() => {
-    if (!job?.description) return { toc: [], sections: [] };
+  const { toc, sections, status, customDates, officialLinks, notificationLinks } = React.useMemo(() => {
+    if (!job?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [] };
     
     const generatedToc: { id: string, text: string }[] = [];
-    const generatedSections: { id: string, title: string, content: string, description?: string, type?: string }[] = [];
+    const generatedSections: any[] = [];
+    let jobStatus = 'Confirmed';
+    let jobCustomDates: { label: string, date: string, icon?: string, status?: string }[] = [];
+    let jobOfficialLinks: { label: string, url: string, color?: string }[] = [];
+    let jobNotificationLinks: { label: string, url: string, color?: string }[] = [];
 
     try {
-      const parsedData = JSON.parse(job.description);
-      const sectionsToProcess = Array.isArray(parsedData) ? parsedData : (parsedData.sections || []);
-      
-      sectionsToProcess.forEach((sec: any) => {
-        let contentHtml = '';
-        if (sec.type === 'text') {
-          contentHtml = sec.content;
-        } else if (sec.type === 'table' && sec.tableData) {
-          contentHtml = `<div class="overflow-x-auto my-6"><table class="w-full border-collapse border border-gray-200">
-            <thead>
-              <tr class="bg-gray-100 text-gray-700">
-                ${sec.tableData.headers.map((h: string) => `<th class="border border-gray-200 p-3 text-left font-semibold">${h}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${sec.tableData.rows.map((row: string[]) => `
-                <tr class="hover:bg-gray-50">
-                  ${row.map((cell: string) => `<td class="border border-gray-200 p-3 text-gray-600">${cell}</td>`).join('')}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table></div>`;
+      const trimmedDesc = job.description.trim();
+      if (trimmedDesc.startsWith('[') || trimmedDesc.startsWith('{')) {
+        const parsedData = JSON.parse(trimmedDesc);
+        
+        const sectionsToProcess = Array.isArray(parsedData) ? parsedData : (parsedData.sections || []);
+        if (!Array.isArray(parsedData)) {
+          jobStatus = parsedData.status || 'Confirmed';
+          jobCustomDates = parsedData.important_dates || [];
+          
+          // Handle multiple links
+          if (parsedData.official_links) {
+            jobOfficialLinks = parsedData.official_links.map((l: any) => ({ ...l, color: l.color || 'blue' }));
+          } else if (parsedData.official_website) {
+            jobOfficialLinks = [{ label: 'Official Website', url: parsedData.official_website, color: 'blue' }];
+          } else if (job.applyLink) {
+            jobOfficialLinks = [{ label: 'Apply Online', url: job.applyLink, color: 'blue' }];
+          }
+
+          if (parsedData.notification_links) {
+            jobNotificationLinks = parsedData.notification_links.map((l: any) => ({ ...l, color: l.color || 'red' }));
+          } else if (parsedData.notification_pdf) {
+            jobNotificationLinks = [{ label: 'Notification PDF', url: parsedData.notification_pdf, color: 'red' }];
+          } else if (job.pdfLink) {
+            jobNotificationLinks = [{ label: 'Notification PDF', url: job.pdfLink, color: 'red' }];
+          }
         }
-        
-        const id = sec.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        generatedToc.push({ id, text: sec.title });
-        
-        generatedSections.push({
-          id,
-          title: sec.title,
-          description: sec.description,
-          content: contentHtml,
-          type: sec.type
+
+        sectionsToProcess.forEach((sec: any) => {
+          const id = sec.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          generatedToc.push({ id, text: sec.title });
+          
+          generatedSections.push({
+            ...sec,
+            id
+          });
         });
-      });
-      
-      return { toc: generatedToc, sections: generatedSections };
+        
+        return { 
+          toc: generatedToc, 
+          sections: generatedSections, 
+          status: jobStatus, 
+          customDates: jobCustomDates,
+          officialLinks: jobOfficialLinks,
+          notificationLinks: jobNotificationLinks
+        };
+      }
     } catch (e) {
       console.error("Failed to parse JSON description, falling back to HTML", e);
     }
@@ -131,8 +144,27 @@ export default function JobDetails() {
       generatedToc.unshift({ id: 'overview', text: 'Overview' });
     }
     
-    return { toc: generatedToc, sections: generatedSections };
-  }, [job?.description]);
+    return { 
+      toc: generatedToc, 
+      sections: generatedSections,
+      status: 'Confirmed',
+      customDates: [],
+      officialLinks: job.applyLink ? [{ label: 'Apply Online', url: job.applyLink }] : [],
+      notificationLinks: job.pdfLink ? [{ label: 'Notification PDF', url: job.pdfLink }] : []
+    };
+  }, [job?.description, job?.applyLink, job?.pdfLink]);
+
+  const getColorClasses = (color?: string) => {
+    switch (color) {
+      case 'red': return 'bg-red-50 text-red-700 hover:bg-red-100 border-red-100';
+      case 'green': return 'bg-green-50 text-green-700 hover:bg-green-100 border-green-100';
+      case 'orange': return 'bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-100';
+      case 'purple': return 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-100';
+      case 'gray': return 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-100';
+      case 'blue':
+      default: return 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-100';
+    }
+  };
 
   if (loading) {
     return (
@@ -257,19 +289,49 @@ export default function JobDetails() {
                         dangerouslySetInnerHTML={{ __html: section.description }}
                       />
                     )}
-                    <div 
-                      className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed
-                                 prose-headings:font-bold prose-headings:text-gray-900
-                                 prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3
-                                 prose-p:mb-4
-                                 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
-                                 prose-table:w-full prose-table:border-collapse prose-table:border prose-table:border-gray-300
-                                 prose-th:bg-gray-100 prose-th:border prose-th:border-gray-300 prose-th:p-3 prose-th:text-left prose-th:font-bold
-                                 prose-td:border prose-td:border-gray-300 prose-td:p-3
-                                 prose-ul:list-disc prose-ul:pl-5 prose-ul:mb-4
-                                 prose-li:mb-1"
-                      dangerouslySetInnerHTML={{ __html: section.content }}
-                    />
+                    
+                    {(section.type === 'text' || section.type === 'text_table') && (
+                      <div 
+                        className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed
+                                   prose-headings:font-bold prose-headings:text-gray-900
+                                   prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3
+                                   prose-p:mb-4
+                                   prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+                                   prose-table:w-full prose-table:border-collapse prose-table:border prose-table:border-gray-300
+                                   prose-th:bg-gray-100 prose-th:border prose-th:border-gray-300 prose-th:p-3 prose-th:text-left prose-th:font-bold
+                                   prose-td:border prose-td:border-gray-300 prose-td:p-3
+                                   prose-ul:list-disc prose-ul:pl-5 prose-ul:mb-4
+                                   prose-li:mb-1"
+                        dangerouslySetInnerHTML={{ __html: section.content }}
+                      />
+                    )}
+
+                    {(section.type === 'table' || section.type === 'text_table') && section.tableData && (
+                      <div className="overflow-x-auto mt-4">
+                        <table className="min-w-full border-collapse border border-gray-200">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              {section.tableData.headers.map((header: string, i: number) => (
+                                <th key={i} className="border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-700">{header}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {section.tableData.rows.map((row: string[], i: number) => (
+                              <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                {row.map((cell: string, j: number) => (
+                                  <td 
+                                    key={j} 
+                                    className={`border border-gray-200 px-4 py-3 text-sm text-gray-700 ${section.tableData.boldCells?.[i]?.[j] ? 'font-bold' : ''}`} 
+                                    dangerouslySetInnerHTML={{ __html: cell }}
+                                  ></td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -340,7 +402,21 @@ export default function JobDetails() {
                     </table>
                   </div>
                   <p className="text-gray-700 mb-4">Interested and eligible candidates can apply online through the official website. Ensure you have all required documents ready before starting the application process.</p>
-                  {job.applyLink && (
+                  {officialLinks.length > 0 ? (
+                    <div className="flex flex-wrap gap-4">
+                      {officialLinks.map((link: any, idx: number) => (
+                        <a 
+                          key={idx}
+                          href={link.url.startsWith('http') ? link.url : `https://${link.url}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition border ${getColorClasses(link.color)}`}
+                        >
+                          <ExternalLink size={20} /> {link.label || 'Click Here to Apply Online'}
+                        </a>
+                      ))}
+                    </div>
+                  ) : job.applyLink && (
                     <a 
                       href={job.applyLink.startsWith('http') ? job.applyLink : `https://${job.applyLink}`} 
                       target="_blank" 
@@ -366,6 +442,73 @@ export default function JobDetails() {
               <button className="bg-white text-red-900 font-bold px-4 py-2 rounded w-full hover:bg-gray-100 transition">
                 Join SuperCoaching
               </button>
+            </div>
+
+            {/* Important Dates Card */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <Calendar size={20} className="text-[#15b86c]" /> Important Dates
+                </h3>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="relative pl-8 border-l-2 border-gray-200 space-y-8">
+                  {customDates.length > 0 ? (
+                    customDates.map((d, i) => (
+                      <div key={i} className="relative">
+                        <div className={`absolute -left-[45px] w-8 h-8 rounded-full border-4 border-white flex items-center justify-center shadow-sm ${i === 0 ? 'bg-[#15b86c]' : 'bg-blue-500'}`}>
+                          {d.icon === 'Bell' ? <Bell size={14} className="text-white" /> : 
+                           d.icon === 'Calendar' ? <Calendar size={14} className="text-white" /> :
+                           d.icon === 'FileText' ? <FileText size={14} className="text-white" /> :
+                           d.icon === 'CheckCircle2' ? <CheckCircle2 size={14} className="text-white" /> :
+                           d.icon === 'Clock' ? <Clock size={14} className="text-white" /> :
+                           // Fallback to text-based matching if icon is not explicitly set
+                           d.label.toLowerCase().includes('notification') ? <Bell size={14} className="text-white" /> : 
+                           d.label.toLowerCase().includes('exam') ? <Calendar size={14} className="text-white" /> :
+                           d.label.toLowerCase().includes('admit') ? <FileText size={14} className="text-white" /> :
+                           d.label.toLowerCase().includes('result') ? <CheckCircle2 size={14} className="text-white" /> :
+                           <Clock size={14} className="text-white" />}
+                        </div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm text-gray-500 font-medium">{d.label}</p>
+                          {(d.status || (d.label.toLowerCase().includes('exam date') && status)) && (
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
+                              (d.status === 'Confirmed' || (!d.status && status === 'Confirmed')) 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {d.status || status}
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-bold text-gray-900">{d.date ? format(new Date(d.date), 'dd MMM yyyy') : 'TBA'}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <div className="absolute -left-[45px] bg-[#15b86c] w-8 h-8 rounded-full border-4 border-white flex items-center justify-center shadow-sm">
+                          <Bell size={14} className="text-white" />
+                        </div>
+                        <p className="text-sm text-gray-500 font-medium mb-1">Notification Released</p>
+                        <p className="font-bold text-gray-900">{format(new Date(job.created_at), 'dd MMM yyyy')}</p>
+                      </div>
+                      <div className="relative">
+                        <div className="absolute -left-[45px] bg-blue-500 w-8 h-8 rounded-full border-4 border-white flex items-center justify-center shadow-sm">
+                          <Calendar size={14} className="text-white" />
+                        </div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm text-gray-500 font-medium">Exam Date</p>
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${status === 'Confirmed' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                            {status}
+                          </span>
+                        </div>
+                        <p className="font-bold text-gray-900">{format(new Date(job.date), 'dd MMM yyyy')}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Quick Overview Card */}
@@ -442,6 +585,35 @@ export default function JobDetails() {
                 </div>
               </div>
             )}
+
+            {/* Official Links */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <ExternalLink size={20} className="text-[#15b86c]" /> Official Resources
+                </h3>
+              </div>
+              <div className="p-4 space-y-3">
+                {officialLinks.map((link: any, idx: number) => (
+                  <a key={`off-${idx}`} href={link.url.startsWith('http') ? link.url : `https://${link.url}`} target="_blank" rel="noopener noreferrer" className={`flex items-center justify-between p-3 rounded-lg transition font-medium text-sm border ${getColorClasses(link.color)}`}>
+                    {link.label || 'Official Website'}
+                    <ExternalLink size={16} />
+                  </a>
+                ))}
+                {notificationLinks.map((link: any, idx: number) => (
+                  <a key={`not-${idx}`} href={link.url.startsWith('http') ? link.url : `https://${link.url}`} target="_blank" rel="noopener noreferrer" className={`flex items-center justify-between p-3 rounded-lg transition font-medium text-sm border ${getColorClasses(link.color)}`}>
+                    {link.label || 'Notification PDF'}
+                    <Download size={16} />
+                  </a>
+                ))}
+                {officialLinks.length === 0 && notificationLinks.length === 0 && job.pdfLink && (
+                  <a href={job.pdfLink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-3 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition font-medium text-sm">
+                    Official Link
+                    <ExternalLink size={16} />
+                  </a>
+                )}
+              </div>
+            </div>
 
             {/* Promo Card */}
             <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-lg p-6 text-white relative overflow-hidden">

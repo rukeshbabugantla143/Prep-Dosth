@@ -1,14 +1,32 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Plus, X, Link as LinkIcon } from "lucide-react";
+import { Edit, Trash2, Plus, X, Link as LinkIcon, ArrowUp, ArrowDown, Bold, GripVertical } from "lucide-react";
 import JoditEditor from "jodit-react";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type SectionType = 'text' | 'table' | 'text_table';
 
 interface TableData {
   headers: string[];
   rows: string[][];
+  boldCells?: boolean[][];
 }
 
 interface Section {
@@ -20,12 +38,202 @@ interface Section {
   tableData?: TableData;
 }
 
+interface SortableImportantDateProps {
+  date: any;
+  idx: number;
+  updateImportantDate: (index: number, field: any, value: string) => void;
+  removeImportantDate: (index: number) => void;
+}
+
+function SortableImportantDate({ 
+  date, 
+  idx, 
+  updateImportantDate, 
+  removeImportantDate 
+}: any) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: `date-${idx}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className="flex gap-2 items-end bg-white p-3 rounded-lg border border-blue-200 shadow-sm relative group"
+    >
+      <div 
+        {...attributes} 
+        {...listeners} 
+        className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-blue-600"
+      >
+        <GripVertical size={20} />
+      </div>
+      <div className="flex-1 space-y-1">
+        <label className="text-xs font-bold text-gray-500 uppercase">Label</label>
+        <input 
+          type="text" 
+          placeholder="e.g. Admit Card" 
+          value={date.label} 
+          onChange={e => updateImportantDate(idx, 'label', e.target.value)}
+          className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+        />
+      </div>
+      <div className="flex-1 space-y-1">
+        <label className="text-xs font-bold text-gray-500 uppercase">Date</label>
+        <input 
+          type="date" 
+          value={date.date} 
+          onChange={e => updateImportantDate(idx, 'date', e.target.value)}
+          className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+        />
+      </div>
+      <div className="flex-1 space-y-1">
+        <label className="text-xs font-bold text-gray-500 uppercase">Status</label>
+        <select 
+          value={date.status || ''} 
+          onChange={e => updateImportantDate(idx, 'status', e.target.value)}
+          className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white"
+        >
+          <option value="">Default</option>
+          <option value="Confirmed">Confirmed</option>
+          <option value="Expected">Expected</option>
+          <option value="Tentative">Tentative</option>
+          <option value="Postponed">Postponed</option>
+          <option value="Completed">Completed</option>
+          <option value="TBA">TBA</option>
+        </select>
+      </div>
+      <div className="flex-1 space-y-1">
+        <label className="text-xs font-bold text-gray-500 uppercase">Icon</label>
+        <select 
+          value={date.icon || 'Clock'} 
+          onChange={e => updateImportantDate(idx, 'icon', e.target.value)}
+          className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white"
+        >
+          <option value="Bell">Bell (Notification)</option>
+          <option value="Calendar">Calendar (Exam)</option>
+          <option value="FileText">File (Admit Card)</option>
+          <option value="CheckCircle2">Check (Result)</option>
+          <option value="Clock">Clock (General)</option>
+        </select>
+      </div>
+      <button type="button" onClick={() => removeImportantDate(idx)} className="text-red-500 hover:text-red-700 p-2">
+        <Trash2 size={18} />
+      </button>
+    </div>
+  );
+}
+
+interface SortableTableRowProps {
+  row: string[];
+  rIndex: number;
+  sectionId: string;
+  boldRows: boolean[];
+  updateTableCell: (sectionId: string, rowIndex: number, colIndex: number, value: string) => void;
+  toggleBoldRow: (sectionId: string, rowIndex: number) => void;
+  removeRow: (sectionId: string, rowIndex: number) => void;
+}
+
+function SortableTableRow({ 
+  row, 
+  rIndex, 
+  sectionId, 
+  boldCells, 
+  updateTableCell, 
+  toggleBoldCell, 
+  removeRow 
+}: any) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: `row-${sectionId}-${rIndex}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style} className="border-b border-gray-100 hover:bg-gray-50 group">
+      <td className="p-2 border-r border-gray-200 w-8">
+        <div 
+          {...attributes} 
+          {...listeners} 
+          className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-blue-600"
+        >
+          <GripVertical size={16} />
+        </div>
+      </td>
+      {row.map((cell, cIndex) => (
+        <td key={cIndex} className="p-2 border-r border-gray-200">
+          <div className="flex gap-1">
+            <input 
+              type="text" 
+              value={cell}
+              onChange={(e) => updateTableCell(sectionId, rIndex, cIndex, e.target.value)}
+              className={`w-full p-1.5 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none ${boldCells?.[rIndex]?.[cIndex] ? 'font-bold' : ''}`}
+            />
+            <div className="flex flex-col gap-1">
+              <button 
+                type="button" 
+                onClick={() => {
+                  const linkText = prompt("Enter link text:", "Click here");
+                  const url = prompt("Enter URL:", "https://");
+                  if (url && linkText) {
+                    const newCell = `${cell} <a href="${url}" target="_blank" class="text-blue-600 underline">${linkText}</a>`;
+                    updateTableCell(sectionId, rIndex, cIndex, newCell);
+                  }
+                }}
+                className="text-xs bg-gray-100 p-1 rounded hover:bg-gray-200"
+                title="Add Link"
+              >
+                <LinkIcon size={12} />
+              </button>
+              <button 
+                type="button" 
+                onClick={() => toggleBoldCell(sectionId, rIndex, cIndex)}
+                className={`p-1 rounded text-xs ${boldCells?.[rIndex]?.[cIndex] ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-blue-600 bg-gray-100'}`}
+                title="Toggle Bold"
+              >
+                <Bold size={12} />
+              </button>
+            </div>
+          </div>
+        </td>
+      ))}
+      <td className="p-2 text-center">
+        <button type="button" onClick={() => removeRow(sectionId, rIndex)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={16}/></button>
+      </td>
+    </tr>
+  );
+}
+
 export default function ManageJobs() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentJob, setCurrentJob] = useState<any>({});
   const [sections, setSections] = useState<Section[]>([]);
-  const [importantDates, setImportantDates] = useState<{ label: string; date: string; icon?: string }[]>([]);
+  const [importantDates, setImportantDates] = useState<{ label: string; date: string; icon?: string; status?: string }[]>([]);
+  const [officialLinks, setOfficialLinks] = useState<{ label: string; url: string; color?: string }[]>([]);
+  const [notificationLinks, setNotificationLinks] = useState<{ label: string; url: string; color?: string }[]>([]);
   const [categories, setCategories] = useState<string[]>(['Railway', 'Bank', 'Defence', 'State', 'Central Govt', 'SSC', 'UPSC']);
   const [newCategory, setNewCategory] = useState('');
 
@@ -43,6 +251,13 @@ export default function ManageJobs() {
   });
   
   const editor = useRef(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const config = useMemo(() => ({
     readonly: false,
     placeholder: 'Enter content...',
@@ -60,6 +275,32 @@ export default function ManageJobs() {
       insertImageAsBase64URI: true
     }
   }), []);
+
+  const handleDragEndImportantDates = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = parseInt(active.id.toString().split('-')[1]);
+      const newIndex = parseInt(over.id.toString().split('-')[1]);
+      setImportantDates((items) => arrayMove(items, oldIndex, newIndex));
+    }
+  };
+
+  const handleDragEndRows = (sectionId: string, event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = parseInt(active.id.toString().split('-').pop()!);
+      const newIndex = parseInt(over.id.toString().split('-').pop()!);
+      
+      setSections(prevSections => prevSections.map(s => {
+        if (s.id === sectionId && s.tableData) {
+          const newRows = arrayMove(s.tableData.rows, oldIndex, newIndex);
+          const newBoldCells = s.tableData.boldCells ? arrayMove(s.tableData.boldCells, oldIndex, newIndex) : undefined;
+          return { ...s, tableData: { ...s.tableData, rows: newRows, boldCells: newBoldCells } };
+        }
+        return s;
+      }));
+    }
+  };
 
   const fetchJobs = async () => {
     const { data, error } = await supabase.from("jobs").select("*");
@@ -95,7 +336,9 @@ export default function ManageJobs() {
     // Serialize sections, important dates to JSON string for description
     const serializedDescription = JSON.stringify({
       sections,
-      important_dates: importantDates
+      important_dates: importantDates,
+      official_links: officialLinks,
+      notification_links: notificationLinks
     });
     const jobToSave = { 
       ...currentJob, 
@@ -121,6 +364,8 @@ export default function ManageJobs() {
     setCurrentJob({});
     setSections([]);
     setImportantDates([]);
+    setOfficialLinks([]);
+    setNotificationLinks([]);
     fetchJobs();
   };
 
@@ -137,17 +382,41 @@ export default function ManageJobs() {
         } else {
           setSections(parsed.sections || []);
           setImportantDates(parsed.important_dates || []);
+
+          // Handle migration for official links
+          if (parsed.official_links) {
+            setOfficialLinks(parsed.official_links.map((l: any) => ({ ...l, color: l.color || 'blue' })));
+          } else if (job.applyLink) {
+            setOfficialLinks([{ label: 'Apply Online', url: job.applyLink, color: 'blue' }]);
+          } else {
+            setOfficialLinks([]);
+          }
+
+          // Handle migration for notification links
+          if (parsed.notification_links) {
+            setNotificationLinks(parsed.notification_links.map((l: any) => ({ ...l, color: l.color || 'red' })));
+          } else if (job.pdfLink) {
+            setNotificationLinks([{ label: 'Notification PDF', url: job.pdfLink, color: 'red' }]);
+          } else {
+            setNotificationLinks([]);
+          }
         }
       } else if (job.description) {
         setSections([{ id: Date.now().toString(), title: 'Details', type: 'text', content: job.description }]);
         setImportantDates([]);
+        setOfficialLinks(job.applyLink ? [{ label: 'Apply Online', url: job.applyLink, color: 'blue' }] : []);
+        setNotificationLinks(job.pdfLink ? [{ label: 'Notification PDF', url: job.pdfLink, color: 'red' }] : []);
       } else {
         setSections([]);
         setImportantDates([]);
+        setOfficialLinks([]);
+        setNotificationLinks([]);
       }
     } catch (e) {
       setSections([{ id: Date.now().toString(), title: 'Details', type: 'text', content: job.description || '' }]);
       setImportantDates([]);
+      setOfficialLinks(job.applyLink ? [{ label: 'Apply Online', url: job.applyLink, color: 'blue' }] : []);
+      setNotificationLinks(job.pdfLink ? [{ label: 'Notification PDF', url: job.pdfLink, color: 'red' }] : []);
     }
     
     setIsEditing(true);
@@ -164,19 +433,29 @@ export default function ManageJobs() {
       { label: 'Notification Released', date: new Date().toISOString().split('T')[0], icon: 'Bell' },
       { label: 'Application Start', date: '', icon: 'Calendar' }
     ]);
+    setOfficialLinks([{ label: 'Apply Online', url: '', color: 'blue' }]);
+    setNotificationLinks([{ label: 'Notification PDF', url: '', color: 'red' }]);
     setIsEditing(true);
   };
 
   // Important Dates Helpers
   const addImportantDate = () => {
-    setImportantDates([...importantDates, { label: '', date: '', icon: 'Clock' }]);
+    setImportantDates([...importantDates, { label: '', date: '', icon: 'Clock', status: '' }]);
+  };
+
+  const moveImportantDate = (index: number, direction: 'up' | 'down') => {
+    if ((direction === 'up' && index === 0) || (direction === 'down' && index === importantDates.length - 1)) return;
+    const newDates = [...importantDates];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    [newDates[index], newDates[targetIndex]] = [newDates[targetIndex], newDates[index]];
+    setImportantDates(newDates);
   };
 
   const removeImportantDate = (index: number) => {
     setImportantDates(importantDates.filter((_, i) => i !== index));
   };
 
-  const updateImportantDate = (index: number, field: 'label' | 'date' | 'icon', value: string) => {
+  const updateImportantDate = (index: number, field: 'label' | 'date' | 'icon' | 'status', value: string) => {
     const newDates = [...importantDates];
     (newDates[index] as any)[field] = value;
     setImportantDates(newDates);
@@ -229,7 +508,27 @@ export default function ManageJobs() {
     setSections(sections.map(s => {
       if (s.id === sectionId && s.tableData) {
         const newRow = new Array(s.tableData.headers.length).fill('');
-        return { ...s, tableData: { ...s.tableData, rows: [...s.tableData.rows, newRow] } };
+        const newBoldCellsRow = new Array(s.tableData.headers.length).fill(false);
+        const newBoldCells = s.tableData.boldCells ? [...s.tableData.boldCells, newBoldCellsRow] : 
+          [...s.tableData.rows.map(() => new Array(s.tableData.headers.length).fill(false)), newBoldCellsRow];
+        return { ...s, tableData: { ...s.tableData, rows: [...s.tableData.rows, newRow], boldCells: newBoldCells } };
+      }
+      return s;
+    }));
+  };
+
+  const toggleBoldCell = (sectionId: string, rowIndex: number, colIndex: number) => {
+    setSections(sections.map(s => {
+      if (s.id === sectionId && s.tableData) {
+        const newBoldCells = s.tableData.boldCells ? [...s.tableData.boldCells.map(row => [...row])] : 
+          s.tableData.rows.map(row => new Array(row.length).fill(false));
+        
+        if (!newBoldCells[rowIndex]) {
+          newBoldCells[rowIndex] = new Array(s.tableData.headers.length).fill(false);
+        }
+        
+        newBoldCells[rowIndex][colIndex] = !newBoldCells[rowIndex][colIndex];
+        return { ...s, tableData: { ...s.tableData, boldCells: newBoldCells } };
       }
       return s;
     }));
@@ -239,7 +538,8 @@ export default function ManageJobs() {
     setSections(sections.map(s => {
       if (s.id === sectionId && s.tableData) {
         const newRows = s.tableData.rows.filter((_, i) => i !== rowIndex);
-        return { ...s, tableData: { ...s.tableData, rows: newRows } };
+        const newBoldCells = s.tableData.boldCells?.filter((_, i) => i !== rowIndex);
+        return { ...s, tableData: { ...s.tableData, rows: newRows, boldCells: newBoldCells } };
       }
       return s;
     }));
@@ -250,7 +550,8 @@ export default function ManageJobs() {
       if (s.id === sectionId && s.tableData) {
         const newHeaders = [...s.tableData.headers, `Column ${s.tableData.headers.length + 1}`];
         const newRows = s.tableData.rows.map(row => [...row, '']);
-        return { ...s, tableData: { ...s.tableData, headers: newHeaders, rows: newRows } };
+        const newBoldCells = s.tableData.boldCells?.map(row => [...row, false]);
+        return { ...s, tableData: { ...s.tableData, headers: newHeaders, rows: newRows, boldCells: newBoldCells } };
       }
       return s;
     }));
@@ -261,7 +562,8 @@ export default function ManageJobs() {
       if (s.id === sectionId && s.tableData) {
         const newHeaders = s.tableData.headers.filter((_, i) => i !== colIndex);
         const newRows = s.tableData.rows.map(row => row.filter((_, i) => i !== colIndex));
-        return { ...s, tableData: { ...s.tableData, headers: newHeaders, rows: newRows } };
+        const newBoldCells = s.tableData.boldCells?.map(row => row.filter((_, i) => i !== colIndex));
+        return { ...s, tableData: { ...s.tableData, headers: newHeaders, rows: newRows, boldCells: newBoldCells } };
       }
       return s;
     }));
@@ -319,48 +621,28 @@ export default function ManageJobs() {
                   <Plus size={16}/> Add Date
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {importantDates.map((date, idx) => (
-                  <div key={idx} className="flex gap-2 items-end bg-white p-3 rounded-lg border border-blue-200 shadow-sm">
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs font-bold text-gray-500 uppercase">Label</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. Admit Card" 
-                        value={date.label} 
-                        onChange={e => updateImportantDate(idx, 'label', e.target.value)}
-                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEndImportantDates}
+              >
+                <SortableContext 
+                  items={importantDates.map((_, i) => `date-${i}`)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {importantDates.map((date, idx) => (
+                      <SortableImportantDate 
+                        key={`date-${idx}`}
+                        date={date}
+                        idx={idx}
+                        updateImportantDate={updateImportantDate}
+                        removeImportantDate={removeImportantDate}
                       />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs font-bold text-gray-500 uppercase">Date</label>
-                      <input 
-                        type="date" 
-                        value={date.date} 
-                        onChange={e => updateImportantDate(idx, 'date', e.target.value)}
-                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs font-bold text-gray-500 uppercase">Icon</label>
-                      <select 
-                        value={date.icon || 'Clock'} 
-                        onChange={e => updateImportantDate(idx, 'icon', e.target.value)}
-                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white"
-                      >
-                        <option value="Bell">Bell (Notification)</option>
-                        <option value="Calendar">Calendar (Exam)</option>
-                        <option value="FileText">File (Admit Card)</option>
-                        <option value="CheckCircle2">Check (Result)</option>
-                        <option value="Clock">Clock (General)</option>
-                      </select>
-                    </div>
-                    <button type="button" onClick={() => removeImportantDate(idx)} className="text-red-500 hover:text-red-700 p-2">
-                      <Trash2 size={18} />
-                    </button>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
             </div>
 
             <div className="md:col-span-2 space-y-6 mt-4">
@@ -413,63 +695,54 @@ export default function ManageJobs() {
                       </div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Table Data</label>
                       <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
-                        <table className="w-full text-left bg-white">
-                          <thead className="bg-gray-100">
-                            <tr>
-                              {section.tableData?.headers.map((header, hIndex) => (
-                                <th key={hIndex} className="p-2 border-b border-r border-gray-200">
-                                  <div className="flex items-center gap-2">
-                                    <input 
-                                      type="text" 
-                                      value={header}
-                                      onChange={(e) => updateTableHeader(section.id, hIndex, e.target.value)}
-                                      className="w-full p-1.5 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
-                                    />
-                                    <button type="button" onClick={() => removeColumn(section.id, hIndex)} className="text-red-400 hover:text-red-600"><X size={14}/></button>
-                                  </div>
-                                </th>
-                              ))}
-                              <th className="p-2 border-b w-10 text-center bg-gray-50">
-                                <button type="button" onClick={() => addColumn(section.id)} className="text-blue-600 hover:text-blue-800 p-1 bg-blue-50 rounded"><Plus size={16}/></button>
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {section.tableData?.rows.map((row, rIndex) => (
-                              <tr key={rIndex} className="border-b border-gray-100 hover:bg-gray-50">
-                                {row.map((cell, cIndex) => (
-                                  <td key={cIndex} className="p-2 border-r border-gray-200">
-                                    <div className="flex gap-1">
+                        <DndContext 
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={(event) => handleDragEndRows(section.id, event)}
+                        >
+                          <table className="w-full text-left bg-white">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="p-2 border-b border-r border-gray-200 w-8"></th>
+                                {section.tableData?.headers.map((header, hIndex) => (
+                                  <th key={hIndex} className="p-2 border-b border-r border-gray-200">
+                                    <div className="flex items-center gap-2">
                                       <input 
                                         type="text" 
-                                        value={cell}
-                                        onChange={(e) => updateTableCell(section.id, rIndex, cIndex, e.target.value)}
+                                        value={header}
+                                        onChange={(e) => updateTableHeader(section.id, hIndex, e.target.value)}
                                         className="w-full p-1.5 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
                                       />
-                                      <button 
-                                        type="button" 
-                                        onClick={() => {
-                                          const linkText = prompt("Enter link text:", "Click here");
-                                          const url = prompt("Enter URL:", "https://");
-                                          if (url && linkText) {
-                                            const newCell = `${cell} <a href="${url}" target="_blank" class="text-blue-600 underline">${linkText}</a>`;
-                                            updateTableCell(section.id, rIndex, cIndex, newCell);
-                                          }
-                                        }}
-                                        className="text-xs bg-gray-100 px-1 rounded hover:bg-gray-200"
-                                      >
-                                        <LinkIcon size={14} />
-                                      </button>
+                                      <button type="button" onClick={() => removeColumn(section.id, hIndex)} className="text-red-400 hover:text-red-600"><X size={14}/></button>
                                     </div>
-                                  </td>
+                                  </th>
                                 ))}
-                                <td className="p-2 text-center">
-                                  <button type="button" onClick={() => removeRow(section.id, rIndex)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={16}/></button>
-                                </td>
+                                <th className="p-2 border-b w-10 text-center bg-gray-50">
+                                  <button type="button" onClick={() => addColumn(section.id)} className="text-blue-600 hover:text-blue-800 p-1 bg-blue-50 rounded"><Plus size={16}/></button>
+                                </th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <SortableContext 
+                              items={section.tableData?.rows.map((_, i) => `row-${section.id}-${i}`) || []}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <tbody>
+                                {section.tableData?.rows.map((row, rIndex) => (
+                                  <SortableTableRow 
+                                    key={`row-${section.id}-${rIndex}`}
+                                    row={row}
+                                    rIndex={rIndex}
+                                    sectionId={section.id}
+                                    boldCells={section.tableData?.boldCells || []}
+                                    updateTableCell={updateTableCell}
+                                    toggleBoldCell={toggleBoldCell}
+                                    removeRow={removeRow}
+                                  />
+                                ))}
+                              </tbody>
+                            </SortableContext>
+                          </table>
+                        </DndContext>
                       </div>
                       <button type="button" onClick={() => addRow(section.id)} className="mt-3 text-sm text-blue-600 font-medium hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg w-fit">
                         <Plus size={16} /> Add Row
@@ -480,13 +753,134 @@ export default function ManageJobs() {
               ))}
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Apply Online Link</label>
-              <input type="text" placeholder="https://..." value={currentJob.applyLink || ""} onChange={e => setCurrentJob({...currentJob, applyLink: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" />
+            <div className="md:col-span-2 space-y-4 bg-gray-50 p-6 rounded-xl border border-gray-200">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-gray-800">Official Links</h3>
+                <button type="button" onClick={() => setOfficialLinks([...officialLinks, { label: '', url: '', color: 'blue' }])} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center gap-1">
+                  <Plus size={16}/> Add Link
+                </button>
+              </div>
+              <div className="space-y-3">
+                {officialLinks.map((link, idx) => (
+                  <div key={idx} className="flex gap-3 items-end bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Label</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Apply Online" 
+                        value={link.label} 
+                        onChange={e => {
+                          const newLinks = [...officialLinks];
+                          newLinks[idx].label = e.target.value;
+                          setOfficialLinks(newLinks);
+                        }}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex-[2] space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">URL</label>
+                      <input 
+                        type="text" 
+                        placeholder="https://..." 
+                        value={link.url} 
+                        onChange={e => {
+                          const newLinks = [...officialLinks];
+                          newLinks[idx].url = e.target.value;
+                          setOfficialLinks(newLinks);
+                        }}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Color</label>
+                      <select 
+                        value={link.color || 'blue'} 
+                        onChange={e => {
+                          const newLinks = [...officialLinks];
+                          newLinks[idx].color = e.target.value;
+                          setOfficialLinks(newLinks);
+                        }}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white"
+                      >
+                        <option value="blue">Blue</option>
+                        <option value="red">Red</option>
+                        <option value="green">Green</option>
+                        <option value="orange">Orange</option>
+                        <option value="purple">Purple</option>
+                        <option value="gray">Gray</option>
+                      </select>
+                    </div>
+                    <button type="button" onClick={() => setOfficialLinks(officialLinks.filter((_, i) => i !== idx))} className="text-red-500 hover:text-red-700 p-2">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Official PDF Link</label>
-              <input type="text" placeholder="https://..." value={currentJob.pdfLink || ""} onChange={e => setCurrentJob({...currentJob, pdfLink: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" />
+
+            <div className="md:col-span-2 space-y-4 bg-gray-50 p-6 rounded-xl border border-gray-200">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-gray-800">Notification PDF Links</h3>
+                <button type="button" onClick={() => setNotificationLinks([...notificationLinks, { label: '', url: '', color: 'red' }])} className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition flex items-center gap-1">
+                  <Plus size={16}/> Add Link
+                </button>
+              </div>
+              <div className="space-y-3">
+                {notificationLinks.map((link, idx) => (
+                  <div key={idx} className="flex gap-3 items-end bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Label</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Notification PDF" 
+                        value={link.label} 
+                        onChange={e => {
+                          const newLinks = [...notificationLinks];
+                          newLinks[idx].label = e.target.value;
+                          setNotificationLinks(newLinks);
+                        }}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex-[2] space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">URL</label>
+                      <input 
+                        type="text" 
+                        placeholder="https://..." 
+                        value={link.url} 
+                        onChange={e => {
+                          const newLinks = [...notificationLinks];
+                          newLinks[idx].url = e.target.value;
+                          setNotificationLinks(newLinks);
+                        }}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <label className="text-xs font-bold text-gray-500 uppercase">Color</label>
+                      <select 
+                        value={link.color || 'red'} 
+                        onChange={e => {
+                          const newLinks = [...notificationLinks];
+                          newLinks[idx].color = e.target.value;
+                          setNotificationLinks(newLinks);
+                        }}
+                        className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none bg-white"
+                      >
+                        <option value="blue">Blue</option>
+                        <option value="red">Red</option>
+                        <option value="green">Green</option>
+                        <option value="orange">Orange</option>
+                        <option value="purple">Purple</option>
+                        <option value="gray">Gray</option>
+                      </select>
+                    </div>
+                    <button type="button" onClick={() => setNotificationLinks(notificationLinks.filter((_, i) => i !== idx))} className="text-red-500 hover:text-red-700 p-2">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
             
             <div className="md:col-span-2 flex gap-4 justify-end mt-4">

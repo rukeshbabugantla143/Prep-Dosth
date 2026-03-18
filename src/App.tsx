@@ -7,6 +7,7 @@ import MainLayout from "./components/layouts/MainLayout";
 import AdminLayout from "./components/layouts/AdminLayout";
 import UserLayout from "./components/layouts/UserLayout";
 import DashboardRedirect from "./components/DashboardRedirect";
+import ScrollToTop from "./components/common/ScrollToTop";
 
 // Pages
 import Home from "./pages/Home";
@@ -53,6 +54,7 @@ export default function App() {
   return (
     <AuthProvider>
       <Router>
+        <ScrollToTop />
         <Routes>
           {/* Public Routes */}
           <Route element={<MainLayout />}>
