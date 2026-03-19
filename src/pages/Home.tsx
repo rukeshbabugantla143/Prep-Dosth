@@ -3,6 +3,7 @@ import { supabase } from "../services/supabaseClient";
 import { Link, useNavigate } from "react-router-dom";
 import { slugify } from "../utils";
 import { Search, Users, Award, BookOpen, PlayCircle, ChevronRight, CheckCircle2, FileText, Clock, Calendar, Video } from "lucide-react";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 
 export default function Home() {
   const [tests, setTests] = useState<any[]>([]);
@@ -13,10 +14,12 @@ export default function Home() {
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [categories, setCategories] = useState<{ name: string; count: number; icon: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       const [testsRes, jobsRes, examsRes, heroRes, sectionsRes] = await Promise.all([
         supabase.from("tests").select("*").limit(4),
         supabase.from("jobs").select("*").limit(4),
@@ -57,6 +60,7 @@ export default function Home() {
       
       const { data: latestExams } = await supabase.from("exams").select("*").order('date', { ascending: false }).limit(3);
       if (latestExams) setExams(latestExams);
+      setLoading(false);
     };
     fetchData();
   }, []);
@@ -86,6 +90,8 @@ export default function Home() {
     { name: "Defence Exams", count: "10+ Exams", icon: "🛡️" },
     { name: "State Exams", count: "50+ Exams", icon: "🗺️" },
   ];
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="w-full font-sans">

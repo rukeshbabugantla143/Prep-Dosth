@@ -4,6 +4,7 @@ import { supabase } from '../services/supabaseClient';
 import { slugify } from '../utils';
 import { Building2, Users, GraduationCap, Calendar, IndianRupee, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, PlayCircle, Download, Bell, Link as LinkIcon, AlertCircle, Info } from 'lucide-react';
 import { format } from 'date-fns';
+import FAQSection from '../components/FAQSection';
 
 export default function JobDetails() {
   const { slug } = useParams();
@@ -312,6 +313,10 @@ export default function JobDetails() {
                                    prose-li:mb-1"
                         dangerouslySetInnerHTML={{ __html: section.content }}
                       />
+                    )}
+
+                    {section.type === 'faq' && (
+                      <FAQSection faqData={section.faqData} />
                     )}
 
                     {(section.type === 'table' || section.type === 'text_table') && section.tableData && (

@@ -22,12 +22,21 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-type SectionType = 'text' | 'table' | 'text_table';
+type SectionType = 'text' | 'table' | 'text_table' | 'faq';
 
 interface TableData {
   headers: string[];
   rows: string[][];
   boldCells?: boolean[][];
+}
+
+interface FAQItem {
+  question: string;
+  answer: string;
+}
+
+interface FAQData {
+  items: FAQItem[];
 }
 
 interface Section {
@@ -37,6 +46,7 @@ interface Section {
   content: string;
   description?: string;
   tableData?: TableData;
+  faqData?: FAQData;
 }
 
 interface SortableImportantDateProps {
@@ -571,9 +581,10 @@ export default function ManageExams() {
     const newSection: Section = {
       id: Date.now().toString(),
       type,
-      title: 'New Section',
+      title: type === 'faq' ? 'Frequently Asked Questions' : 'New Section',
       content: '',
-      ...(type === 'table' || type === 'text_table' ? { tableData: { headers: ['Column 1', 'Column 2'], rows: [['', '']] } } : {})
+      ...(type === 'table' || type === 'text_table' ? { tableData: { headers: ['Column 1', 'Column 2'], rows: [['', '']] } } : {}),
+      ...(type === 'faq' ? { faqData: { items: [{ question: '', answer: '' }] } } : {})
     };
     setSections([...sections, newSection]);
   };
@@ -951,6 +962,7 @@ export default function ManageExams() {
                   <button type="button" onClick={() => addSection('text')} className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-100 transition flex items-center gap-1"><Plus size={16}/> Text Section</button>
                   <button type="button" onClick={() => addSection('table')} className="bg-green-50 text-green-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-100 transition flex items-center gap-1"><Plus size={16}/> Table Section</button>
                   <button type="button" onClick={() => addSection('text_table')} className="bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-purple-100 transition flex items-center gap-1"><Plus size={16}/> Text+Table Section</button>
+                  <button type="button" onClick={() => addSection('faq')} className="bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-orange-100 transition flex items-center gap-1"><Plus size={16}/> FAQ Section</button>
                 </div>
               </div>
 
@@ -980,6 +992,57 @@ export default function ManageExams() {
                       />
                     </div>
                   ) : null}
+                  
+                  {section.type === 'faq' && (
+                    <div className="mb-4 space-y-3">
+                      <label className="block text-sm font-medium text-gray-700">FAQs</label>
+                      {section.faqData?.items.map((item, fIndex) => (
+                        <div key={fIndex} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm space-y-2">
+                          <input
+                            type="text"
+                            placeholder="Question"
+                            value={item.question}
+                            onChange={(e) => {
+                              const newItems = [...(section.faqData?.items || [])];
+                              newItems[fIndex].question = e.target.value;
+                              updateSection(section.id, { faqData: { items: newItems } });
+                            }}
+                            className="border p-2 rounded-lg w-full"
+                          />
+                          <textarea
+                            placeholder="Answer"
+                            value={item.answer}
+                            onChange={(e) => {
+                              const newItems = [...(section.faqData?.items || [])];
+                              newItems[fIndex].answer = e.target.value;
+                              updateSection(section.id, { faqData: { items: newItems } });
+                            }}
+                            className="border p-2 rounded-lg w-full"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newItems = (section.faqData?.items || []).filter((_, i) => i !== fIndex);
+                              updateSection(section.id, { faqData: { items: newItems } });
+                            }}
+                            className="text-red-500 text-sm"
+                          >
+                            Remove FAQ
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newItems = [...(section.faqData?.items || []), { question: '', answer: '' }];
+                          updateSection(section.id, { faqData: { items: newItems } });
+                        }}
+                        className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-100 transition"
+                      >
+                        Add FAQ Item
+                      </button>
+                    </div>
+                  )}
                   
                   {section.type === 'table' || section.type === 'text_table' ? (
                     <div>
