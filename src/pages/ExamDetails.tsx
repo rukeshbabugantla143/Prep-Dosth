@@ -5,6 +5,7 @@ import { slugify } from '../utils';
 import { Calendar, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, BookOpen, PlayCircle, Download, Bell, Play, X, Link as LinkIcon, AlertCircle, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import FAQSection from '../components/FAQSection';
+import IconList from '../components/common/IconList';
 
 export default function ExamDetails() {
   const { slug } = useParams();
@@ -295,7 +296,7 @@ export default function ExamDetails() {
               <div className="space-y-6">
                 {sections.map((section) => (
                   <div key={section.id} id={section.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 scroll-mt-32">
-                    <h2 className="text-xl font-bold text-gray-900 mb-2">
+                    <h2 className="text-xl font-bold text-gray-900 mb-0">
                       {section.title}
                     </h2>
                     {(section.type === 'table' || section.type === 'text_table') && section.description && (
@@ -311,7 +312,7 @@ export default function ExamDetails() {
                                    prose-headings:font-bold prose-headings:text-gray-900
                                    prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3
                                    prose-p:mb-4
-                                   prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
+                                   prose-a:text-blue-600 prose-a:font-bold hover:prose-a:text-blue-700
                                    prose-table:w-full prose-table:border-collapse prose-table:border prose-table:border-gray-300
                                    prose-th:bg-gray-100 prose-th:border prose-th:border-gray-300 prose-th:p-3 prose-th:text-left prose-th:font-bold
                                    prose-td:border prose-td:border-gray-300 prose-td:p-3
@@ -323,6 +324,21 @@ export default function ExamDetails() {
 
                     {section.type === 'faq' && (
                       <FAQSection faqData={section.faqData} />
+                    )}
+
+                    {section.type === 'icon_list' && (
+                      <div className="space-y-4">
+                    {section.content && (
+                      <div 
+                        className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed mb-1
+                                   prose-headings:font-bold prose-headings:text-gray-900
+                                   prose-p:mb-2
+                                   prose-a:text-blue-600 prose-a:font-bold hover:prose-a:text-blue-700"
+                        dangerouslySetInnerHTML={{ __html: section.content }}
+                      />
+                    )}
+                        <IconList items={section.items} iconName={section.iconName} iconColor={section.iconColor} />
+                      </div>
                     )}
 
                     {(section.type === 'table' || section.type === 'text_table') && section.tableData && (
@@ -341,7 +357,7 @@ export default function ExamDetails() {
                                 {row.map((cell: string, j: number) => (
                                   <td 
                                     key={j} 
-                                    className={`border border-gray-200 px-4 py-3 text-sm text-gray-700 ${section.tableData.boldCells?.[i]?.[j] ? 'font-bold' : ''} [&_a]:no-underline hover:[&_a]:underline [&_a]:text-blue-600 [&_a]:font-medium [&_a]:inline-flex [&_a]:items-center [&_a]:gap-1`} 
+                                    className={`border border-gray-200 px-4 py-3 text-sm text-gray-700 ${section.tableData.boldCells?.[i]?.[j] ? 'font-bold' : ''} [&_a]:text-blue-600 [&_a]:font-bold hover:[&_a]:text-blue-700 [&_a]:inline-flex [&_a]:items-center [&_a]:gap-1`} 
                                     dangerouslySetInnerHTML={{ __html: cell }}
                                   ></td>
                                 ))}

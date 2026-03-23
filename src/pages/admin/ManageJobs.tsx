@@ -22,7 +22,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-type SectionType = 'text' | 'table' | 'text_table' | 'faq';
+type SectionType = 'text' | 'table' | 'text_table' | 'faq' | 'icon_list';
 
 interface TableData {
   headers: string[];
@@ -39,6 +39,12 @@ interface FAQData {
   items: FAQItem[];
 }
 
+interface IconListItem {
+  text: string;
+  iconName?: string;
+  iconColor?: string;
+}
+
 interface Section {
   id: string;
   title: string;
@@ -47,6 +53,9 @@ interface Section {
   description?: string;
   tableData?: TableData;
   faqData?: FAQData;
+  items?: IconListItem[];
+  iconName?: string;
+  iconColor?: string;
 }
 
 interface SortableImportantDateProps {
@@ -282,6 +291,23 @@ export default function ManageJobs() {
       'source', '|', 'bold', 'italic', 'underline', 'strikethrough', '|',
       'brush', 'fill', '|',
       'ul', 'ol', '|',
+      {
+        name: 'premiumCheck',
+        iconURL: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
+        tooltip: 'Insert Bold Checklist',
+        exec: (editor: any) => {
+          editor.s.insertHTML('<ul class="premium-list"><li>New Item</li></ul>');
+        }
+      },
+      {
+        name: 'premiumStar',
+        iconURL: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png',
+        tooltip: 'Insert Star List',
+        exec: (editor: any) => {
+          editor.s.insertHTML('<ul class="premium-list premium-list-star"><li>New Item</li></ul>');
+        }
+      },
+      '|',
       'font', 'fontsize', 'paragraph', '|',
       'align', 'indent', 'outdent', '|',
       'table', 'link', 'image', 'video', '|',
@@ -289,6 +315,11 @@ export default function ManageJobs() {
     ],
     uploader: {
       insertImageAsBase64URI: true
+    },
+    style: {
+      color: '#374151',
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px'
     }
   }), []);
 
@@ -484,11 +515,12 @@ export default function ManageJobs() {
   const addSection = (type: SectionType) => {
     const newSection: Section = {
       id: Date.now().toString(),
-      title: type === 'faq' ? 'Frequently Asked Questions' : 'New Section',
+      title: type === 'faq' ? 'Frequently Asked Questions' : (type === 'icon_list' ? 'Icon List' : 'New Section'),
       type,
       content: '',
       ...(type === 'table' || type === 'text_table' ? { tableData: { headers: ['Column 1', 'Column 2'], rows: [['', '']] } } : {}),
-      ...(type === 'faq' ? { faqData: { items: [{ question: '', answer: '' }] } } : {})
+      ...(type === 'faq' ? { faqData: { items: [{ question: '', answer: '' }] } } : {}),
+      ...(type === 'icon_list' ? { items: [{ text: '' }], iconName: 'Check', iconColor: 'text-blue-500', content: '' } : {})
     };
     setSections([...sections, newSection]);
   };
@@ -680,6 +712,7 @@ export default function ManageJobs() {
                   <button type="button" onClick={() => addSection('table')} className="bg-green-50 text-green-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-100 transition flex items-center gap-1"><Plus size={16}/> Table Section</button>
                   <button type="button" onClick={() => addSection('text_table')} className="bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-purple-100 transition flex items-center gap-1"><Plus size={16}/> Text+Table Section</button>
                   <button type="button" onClick={() => addSection('faq')} className="bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-orange-100 transition flex items-center gap-1"><Plus size={16}/> FAQ Section</button>
+                  <button type="button" onClick={() => addSection('icon_list')} className="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-100 transition flex items-center gap-1"><Plus size={16}/> Icon List Section</button>
                 </div>
               </div>
 
@@ -761,6 +794,137 @@ export default function ManageJobs() {
                     </div>
                   )}
                   
+                  {section.type === 'icon_list' && (
+                    <div className="mb-4 space-y-4">
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Intro Text (Optional)</label>
+                        <JoditEditor
+                          value={section.content || ''}
+                          onBlur={(newContent) => updateSection(section.id, { content: newContent })}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-4 rounded-lg border border-gray-200">
+                        <div className="space-y-3">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Default Icon Settings</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              placeholder="Icon Name"
+                              value={section.iconName || 'Check'}
+                              onChange={(e) => updateSection(section.id, { iconName: e.target.value })}
+                              className="p-2 border rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Color Class"
+                              value={section.iconColor || 'text-blue-500'}
+                              onChange={(e) => updateSection(section.id, { iconColor: e.target.value })}
+                              className="p-2 border rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="flex flex-wrap gap-2 pt-2">
+                            {['Check', 'Star', 'Info', 'Bell', 'Calendar', 'FileText', 'User', 'Award', 'Target', 'Zap'].map(icon => (
+                              <button
+                                key={icon}
+                                type="button"
+                                onClick={() => updateSection(section.id, { iconName: icon })}
+                                className={`px-2 py-1 text-xs rounded border transition ${section.iconName === icon ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+                              >
+                                {icon}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Common Colors</label>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { label: 'Blue', class: 'text-blue-500' },
+                              { label: 'Green', class: 'text-green-500' },
+                              { label: 'Red', class: 'text-red-500' },
+                              { label: 'Orange', class: 'text-orange-500' },
+                              { label: 'Purple', class: 'text-purple-500' },
+                              { label: 'Indigo', class: 'text-indigo-500' }
+                            ].map(color => (
+                              <button
+                                key={color.class}
+                                type="button"
+                                onClick={() => updateSection(section.id, { iconColor: color.class })}
+                                className={`px-2 py-1 text-xs rounded border transition ${section.iconColor === color.class ? 'bg-gray-800 text-white border-gray-800' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
+                              >
+                                {color.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <label className="block text-sm font-medium text-gray-700">List Items</label>
+                      <div className="space-y-2">
+                        {section.items?.map((item, iIndex) => (
+                          <div key={iIndex} className="flex gap-2 items-center bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                placeholder="Item text"
+                                value={typeof item === 'string' ? item : item.text}
+                                onChange={(e) => {
+                                  const newItems = [...(section.items || [])];
+                                  if (typeof newItems[iIndex] === 'string') {
+                                    newItems[iIndex] = { text: e.target.value };
+                                  } else {
+                                    newItems[iIndex] = { ...newItems[iIndex], text: e.target.value };
+                                  }
+                                  updateSection(section.id, { items: newItems });
+                                }}
+                                className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                              />
+                            </div>
+                            <div className="w-32">
+                              <input
+                                type="text"
+                                placeholder="Icon (optional)"
+                                value={typeof item === 'string' ? '' : (item.iconName || '')}
+                                onChange={(e) => {
+                                  const newItems = [...(section.items || [])];
+                                  if (typeof newItems[iIndex] === 'string') {
+                                    newItems[iIndex] = { text: newItems[iIndex], iconName: e.target.value };
+                                  } else {
+                                    newItems[iIndex] = { ...newItems[iIndex], iconName: e.target.value };
+                                  }
+                                  updateSection(section.id, { items: newItems });
+                                }}
+                                className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newItems = (section.items || []).filter((_, i) => i !== iIndex);
+                                updateSection(section.id, { items: newItems });
+                              }}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newItems = [...(section.items || []), { text: '' }];
+                          updateSection(section.id, { items: newItems });
+                        }}
+                        className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-100 transition flex items-center gap-1"
+                      >
+                        <Plus size={14} /> Add Item
+                      </button>
+                    </div>
+                  )}
+
                   {section.type === 'table' || section.type === 'text_table' ? (
                     <div>
                       <div className="mb-4">
