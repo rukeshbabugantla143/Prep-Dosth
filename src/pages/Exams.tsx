@@ -8,8 +8,8 @@ import { Search } from "lucide-react";
 export default function Exams() {
   const [exams, setExams] = useState<any[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [filter, setFilter] = useState("All Exams");
   const [searchParams] = useSearchParams();
+  const [filter, setFilter] = useState(searchParams.get("category") || "All Exams");
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
 
   useEffect(() => {
@@ -19,16 +19,28 @@ export default function Exams() {
         setExams(data);
         const uniqueCategories = Array.from(new Set(data.map((exam: any) => exam.category).filter(Boolean)));
         setCategories(['All Exams', ...uniqueCategories] as string[]);
+        
+        // If category in URL is not in uniqueCategories, reset to All Exams
+        const urlCategory = searchParams.get("category");
+        if (urlCategory && !uniqueCategories.includes(urlCategory)) {
+          // setFilter("All Exams"); // Keep it if it might be valid but not present yet
+        }
       }
       if (error) console.error("Error fetching exams:", error);
     };
     fetchExams();
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     const query = searchParams.get("search");
     if (query) {
       setSearchQuery(query);
+    }
+    const cat = searchParams.get("category");
+    if (cat) {
+      setFilter(cat);
+    } else {
+      setFilter("All Exams");
     }
   }, [searchParams]);
 

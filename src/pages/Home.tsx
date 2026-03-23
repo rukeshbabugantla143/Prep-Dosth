@@ -252,7 +252,7 @@ export default function Home() {
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {categories.map((cat, idx) => (
-            <Link key={idx} to="/exams" className="bg-white border border-gray-200 p-6 rounded-2xl hover:shadow-lg hover:border-[#15b86c] transition group flex flex-col items-center text-center">
+            <Link key={idx} to={`/exams?category=${encodeURIComponent(cat.name)}`} className="bg-white border border-gray-200 p-6 rounded-2xl hover:shadow-lg hover:border-[#15b86c] transition group flex flex-col items-center text-center">
               <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">{cat.icon}</div>
               <h3 className="font-bold text-gray-800 mb-1">{cat.name}</h3>
               <p className="text-sm text-gray-500 font-medium">{cat.count}</p>
@@ -288,11 +288,8 @@ export default function Home() {
                   <p className="text-sm text-gray-600 flex items-center gap-2">
                     <CheckCircle2 size={16} className="text-[#15b86c]" /> {test.timeLimit} Mins Duration
                   </p>
-                  <p className="text-sm text-gray-600 flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-[#15b86c]" /> {test.marks} Total Marks
-                  </p>
                 </div>
-                <Link to={`/user/tests/${test.id}`} className="w-full block text-center bg-white border-2 border-[#15b86c] text-[#15b86c] py-2.5 rounded-lg font-bold hover:bg-[#15b86c] hover:text-white transition">
+                <Link to={`/user/test/${test.id}`} className="w-full block text-center bg-white border-2 border-[#15b86c] text-[#15b86c] py-2.5 rounded-lg font-bold hover:bg-[#15b86c] hover:text-white transition">
                   Start Free Test
                 </Link>
               </div>
@@ -402,7 +399,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-12">
           <div className="md:w-1/2 space-y-6">
             <div className="inline-block bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-black px-4 py-1 rounded-full text-sm tracking-wide uppercase">
-              GovPrep Pass Pro
+              PrepDosth Pass Pro
             </div>
             <h2 className="text-4xl md:text-5xl font-black leading-tight">
               Unlock 70,000+ Mock Tests & Previous Year Papers

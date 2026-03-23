@@ -39,12 +39,20 @@ import ManageUsers from "./pages/admin/ManageUsers";
 // User Pages
 import UserDashboard from "./pages/user/Dashboard";
 import AttemptTest from "./pages/user/AttemptTest";
+import Results from "./pages/user/Results";
+import Profile from "./pages/user/Profile";
+import TestReview from "./pages/user/TestReview";
 
 const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: "admin" | "user" }) => {
   const { user, loading } = useAuth();
   
   if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" />;
+  
+  // Admin can access everything
+  if (user.role === "admin") return <>{children}</>;
+  
+  // If a specific role is required and user doesn't have it
   if (role && user.role !== role) return <Navigate to="/" />;
   
   return <>{children}</>;
@@ -82,8 +90,11 @@ export default function App() {
           {/* User Routes */}
           <Route path="/user" element={<ProtectedRoute role="user"><UserLayout /></ProtectedRoute>}>
             <Route index element={<UserDashboard />} />
-            <Route path="tests/:id" element={<AttemptTest />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="results" element={<Results />} />
+            <Route path="results/:resultId" element={<TestReview />} />
           </Route>
+          <Route path="/user/test/:id" element={<ProtectedRoute role="user"><AttemptTest /></ProtectedRoute>} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>

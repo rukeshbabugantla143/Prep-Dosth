@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { slugify } from "../utils";
 import { supabase } from "../services/supabaseClient";
 import { format } from "date-fns";
@@ -7,8 +7,9 @@ import { Search } from "lucide-react";
 
 export default function Jobs() {
   const [jobs, setJobs] = useState<any[]>([]);
-  const [filter, setFilter] = useState("All Jobs");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const [filter, setFilter] = useState(searchParams.get("category") || "All Jobs");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
@@ -23,6 +24,19 @@ export default function Jobs() {
     };
     fetchJobs();
   }, []);
+
+  useEffect(() => {
+    const query = searchParams.get("search");
+    if (query) {
+      setSearchQuery(query);
+    }
+    const cat = searchParams.get("category");
+    if (cat) {
+      setFilter(cat);
+    } else {
+      setFilter("All Jobs");
+    }
+  }, [searchParams]);
 
   const filteredJobs = jobs.filter(job => {
     const matchesFilter = filter === "All Jobs" || job.department === filter;

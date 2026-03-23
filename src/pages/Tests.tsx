@@ -33,15 +33,11 @@ export default function Tests() {
                 <span className="text-gray-500 font-medium">Questions:</span>
                 <span className="font-bold text-lg">{test.questions?.length || 0}</span>
               </div>
-              <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                <span className="text-gray-500 font-medium">Total Marks:</span>
-                <span className="font-bold text-lg">{test.marks}</span>
-              </div>
             </div>
             
             <div className="mt-auto">
               {user ? (
-                <Link to={`/user/tests/${test.id}`} className="block text-center bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md">
+                <Link to={`/user/test/${test.id}`} className="block text-center bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md">
                   Start Test
                 </Link>
               ) : (

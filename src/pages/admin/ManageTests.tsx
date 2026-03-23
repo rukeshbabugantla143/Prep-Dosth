@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Plus } from "lucide-react";
+import { Edit, Trash2, Plus, FileText, Loader2, AlertCircle } from "lucide-react";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import mammoth from "mammoth";
 
 export default function ManageTests() {
   const [tests, setTests] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentTest, setCurrentTest] = useState<any>({ questions: [] });
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -49,16 +53,135 @@ export default function ManageTests() {
     });
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setError(null);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      const text = result.value;
+
+      if (!text.trim()) {
+        throw new Error("The selected file is empty or could not be read.");
+      }
+
+      // Label-based Table Parsing (No AI)
+      const questions: any[] = [];
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+      
+      let currentQ: any = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const nextLine = lines[i + 1] || "";
+
+        // 1. Start of a new question
+        if (line.toLowerCase() === "question") {
+          // Save previous question if it exists
+          if (currentQ && currentQ.options.length > 0) {
+            while (currentQ.options.length < 4) currentQ.options.push("Option " + (currentQ.options.length + 1));
+            questions.push(currentQ);
+          }
+          
+          currentQ = {
+            questionText: nextLine,
+            options: [],
+            correctAnswerIndex: 0
+          };
+          i++; // Skip the next line as it's the question text
+          continue;
+        }
+
+        if (!currentQ) continue;
+
+        // 2. Option label
+        if (line.toLowerCase() === "option") {
+          currentQ.options.push(nextLine);
+          i++; // Skip the next line as it's the option text
+          continue;
+        }
+
+        // 3. Answer label (usually a number like 1, 2, 3, 4)
+        if (line.toLowerCase() === "answer") {
+          const ansVal = parseInt(nextLine);
+          if (!isNaN(ansVal)) {
+            currentQ.correctAnswerIndex = ansVal - 1; // Convert 1-based to 0-based
+          }
+          i++;
+          continue;
+        }
+        
+        // 4. Solution label (can be used for extra info if needed)
+        if (line.toLowerCase() === "solution") {
+          // We can append solution to question text or ignore
+          i++;
+          continue;
+        }
+      }
+      
+      // Push the last question
+      if (currentQ && currentQ.options.length > 0) {
+        while (currentQ.options.length < 4) currentQ.options.push("Option " + (currentQ.options.length + 1));
+        questions.push(currentQ);
+      }
+
+      // Final pass: Map indices to actual option text
+      const finalQuestions = questions.map(q => ({
+        questionText: q.questionText,
+        options: q.options,
+        correctAnswer: q.options[q.correctAnswerIndex] || q.options[0]
+      }));
+
+      if (finalQuestions.length > 0) {
+        setCurrentTest({
+          ...currentTest,
+          questions: [...(currentTest.questions || []), ...finalQuestions]
+        });
+      } else {
+        throw new Error("Could not find any questions. Please ensure your Word file has labels like 'Question', 'Option', and 'Answer' in separate rows.");
+      }
+    } catch (error: any) {
+      console.error("Error parsing Word file:", error);
+      setError(`Failed to parse Word file: ${error.message || "Unknown error"}`);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentTest.id) {
-      await supabase.from("tests").update(currentTest).eq("id", currentTest.id);
-    } else {
-      await supabase.from("tests").insert(currentTest);
+    setError(null);
+    try {
+      // Prepare data for Supabase
+      const testData = {
+        title: currentTest.title,
+        timeLimit: parseInt(currentTest.timeLimit),
+        questions: currentTest.questions.map((q: any, index: number) => ({
+          ...q,
+          id: q.id || `q-${Date.now()}-${index}`
+        }))
+      };
+
+      let result;
+      if (currentTest.id) {
+        result = await supabase.from("tests").update(testData).eq("id", currentTest.id);
+      } else {
+        result = await supabase.from("tests").insert([testData]);
+      }
+
+      if (result.error) throw result.error;
+
+      setIsEditing(false);
+      setCurrentTest({ questions: [] });
+      fetchTests();
+    } catch (err: any) {
+      console.error("Error saving test:", err);
+      setError(`Failed to save test: ${err.message || "Unknown error"}`);
     }
-    setIsEditing(false);
-    setCurrentTest({ questions: [] });
-    fetchTests();
   };
 
   const addQuestion = () => {
@@ -92,19 +215,44 @@ export default function ManageTests() {
       {isEditing && (
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
           <h2 className="text-2xl font-bold mb-6 text-gray-800">{currentTest.id ? "Edit Test" : "Create New Test"}</h2>
+          
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-700 rounded-xl flex items-center gap-3">
+              <AlertCircle size={20} />
+              <p>{error}</p>
+            </div>
+          )}
+
           <form onSubmit={handleSave} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <input type="text" placeholder="Test Title" value={currentTest.title || ""} onChange={e => setCurrentTest({...currentTest, title: e.target.value})} className="border p-3 rounded-lg w-full" required />
               <input type="number" placeholder="Time Limit (mins)" value={currentTest.timeLimit || ""} onChange={e => setCurrentTest({...currentTest, timeLimit: e.target.value})} className="border p-3 rounded-lg w-full" required />
-              <input type="number" placeholder="Total Marks" value={currentTest.marks || ""} onChange={e => setCurrentTest({...currentTest, marks: e.target.value})} className="border p-3 rounded-lg w-full" required />
             </div>
 
             <div className="border-t border-gray-200 pt-6">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h3 className="text-xl font-bold text-gray-800">Questions</h3>
-                <button type="button" onClick={addQuestion} className="bg-green-100 text-green-700 px-4 py-2 rounded-lg font-medium hover:bg-green-200 transition">
-                  + Add Question
-                </button>
+                <div className="flex gap-3">
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileUpload} 
+                    accept=".docx" 
+                    className="hidden" 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => fileInputRef.current?.click()} 
+                    disabled={isUploading}
+                    className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-100 transition flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isUploading ? <Loader2 className="animate-spin" size={18} /> : <FileText size={18} />}
+                    {isUploading ? "Processing..." : "Upload Word File"}
+                  </button>
+                  <button type="button" onClick={addQuestion} className="bg-green-100 text-green-700 px-4 py-2 rounded-lg font-medium hover:bg-green-200 transition">
+                    + Add Question
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-6">

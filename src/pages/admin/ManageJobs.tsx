@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Plus, X, Link as LinkIcon, ArrowUp, ArrowDown, Bold, GripVertical } from "lucide-react";
+import { Edit, Trash2, Plus, X, Link as LinkIcon, ArrowUp, ArrowDown, Bold, GripVertical, Search, Copy, ArrowLeft, BookOpen, Calendar, Users } from "lucide-react";
 import JoditEditor from "jodit-react";
 import ConfirmationModal from "../../components/ConfirmationModal";
 import ImageUpload from "../../components/common/ImageUpload";
@@ -261,6 +261,8 @@ export default function ManageJobs() {
   const [notificationLinks, setNotificationLinks] = useState<{ label: string; url: string; color?: string }[]>([]);
   const [categories, setCategories] = useState<string[]>(['Railway', 'Bank', 'Defence', 'State', 'Central Govt', 'SSC', 'UPSC']);
   const [newCategory, setNewCategory] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -472,6 +474,21 @@ export default function ManageJobs() {
     setIsEditing(true);
   };
 
+  const filteredJobs = jobs.filter(job => 
+    job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (job.department && job.department.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const groupedJobs = useMemo(() => {
+    const groups: { [key: string]: any[] } = {};
+    filteredJobs.forEach(job => {
+      const cat = job.department || 'Uncategorized';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(job);
+    });
+    return groups;
+  }, [filteredJobs]);
+
   const handleAddNew = () => {
     setCurrentJob({});
     setSections([
@@ -623,11 +640,47 @@ export default function ManageJobs() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Manage Jobs</h1>
-        <button onClick={handleAddNew} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
-          <Plus size={20} /> Add New Job
-        </button>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          {selectedCategory && !isEditing && (
+            <button 
+              onClick={() => setSelectedCategory(null)}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              title="Back to Categories"
+            >
+              <ArrowLeft size={24} className="text-gray-600" />
+            </button>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">
+              {isEditing ? (currentJob.id ? 'Edit Job' : 'Add New Job') : (selectedCategory ? selectedCategory : 'Manage Jobs')}
+            </h1>
+            <p className="text-gray-500">
+              {isEditing ? 'Fill in the details below' : (selectedCategory ? `Manage jobs in ${selectedCategory}` : 'Organize and manage your job notifications')}
+            </p>
+          </div>
+        </div>
+        {!isEditing && (
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder="Search jobs..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (e.target.value) setSelectedCategory(null);
+                }}
+                className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl w-64 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              />
+            </div>
+            <button onClick={handleAddNew} className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition shadow-sm">
+              <Plus size={20} />
+              Add New Job
+            </button>
+          </div>
+        )}
       </div>
 
       {isEditing && (
@@ -1134,34 +1187,73 @@ export default function ManageJobs() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100 text-gray-600">
-              <th className="p-4 font-semibold">Title</th>
-              <th className="p-4 font-semibold">Department</th>
-              <th className="p-4 font-semibold">Posts</th>
-              <th className="p-4 font-semibold text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {jobs.map(job => (
-              <tr key={job.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                <td className="p-4 font-medium text-gray-800">{job.title}</td>
-                <td className="p-4 text-gray-600">{job.department}</td>
-                <td className="p-4 text-gray-600">{job.posts}</td>
-                <td className="p-4 flex justify-end gap-3">
-                  <button onClick={() => handleEdit(job)} className="text-blue-600 hover:text-blue-800 p-2 bg-blue-50 rounded-lg transition"><Edit size={18} /></button>
-                  <button onClick={() => handleDelete(job.id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
-                </td>
-              </tr>
-            ))}
-            {jobs.length === 0 && (
-              <tr><td colSpan={4} className="p-8 text-center text-gray-500">No jobs found. Add one above.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {!isEditing && (
+        <>
+          {/* Category Cards View: Only show if no category is selected and no search is active */}
+          {!selectedCategory && !searchQuery ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+              {(Object.entries(groupedJobs) as [string, any[]][]).map(([category, categoryJobs]) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all text-center group"
+                >
+                  <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                    <BookOpen className="text-blue-600" size={32} />
+                  </div>
+                  <h3 className="font-bold text-gray-800 mb-1">{category}</h3>
+                  <p className="text-sm text-gray-500">{categoryJobs.length}+ Jobs</p>
+                </button>
+              ))}
+              {Object.keys(groupedJobs).length === 0 && (
+                <div className="col-span-full py-12 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                  <p className="text-gray-500">No jobs found. Add your first job to see categories.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Jobs List View: Show when a category is selected or searching */
+            <div className="space-y-8">
+              {(Object.entries(groupedJobs) as [string, any[]][])
+                .filter(([category]) => !selectedCategory || category === selectedCategory)
+                .map(([category, categoryJobs]) => (
+                  <div key={category} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="bg-gray-50 p-4 border-b border-gray-100 flex justify-between items-center">
+                      <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                        <span className="w-2 h-6 bg-blue-600 rounded-full"></span>
+                        {category}
+                        <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">{categoryJobs.length}</span>
+                      </h3>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {categoryJobs.map(job => (
+                        <div key={job.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex justify-between items-center group hover:border-blue-200 transition-all">
+                          <div className="flex-1 min-w-0 mr-4">
+                            <h4 className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors truncate">{job.title}</h4>
+                            <div className="flex items-center gap-3 mt-1">
+                              <span className="text-xs text-gray-500 flex items-center gap-1">
+                                <Users size={12} /> {job.posts} Posts
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <button onClick={() => handleEdit(job)} className="text-blue-600 hover:text-blue-800 p-2 bg-white rounded-lg shadow-sm border border-gray-100 transition" title="Edit"><Edit size={18} /></button>
+                            <button onClick={() => handleDelete(job.id)} className="text-red-600 hover:text-red-800 p-2 bg-white rounded-lg shadow-sm border border-gray-100 transition" title="Delete"><Trash2 size={18} /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              {filteredJobs.length === 0 && (
+                <div className="bg-white p-12 rounded-2xl border border-dashed border-gray-300 text-center text-gray-500">
+                  No jobs found matching your search.
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
