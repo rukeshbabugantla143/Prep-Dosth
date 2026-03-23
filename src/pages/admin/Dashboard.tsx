@@ -28,44 +28,44 @@ export default function AdminDashboard() {
     <div className="p-2 md:p-0">
       <h1 className="text-2xl md:text-3xl font-bold mb-6 md:mb-8 text-gray-800">Admin Overview</h1>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-12">
-        <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
-          <div className="bg-blue-100 p-3 md:p-4 rounded-xl text-blue-600 flex-shrink-0">
-            <Users size={24} className="md:w-8 md:h-8" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-8 md:mb-12">
+        <div className="bg-white p-3 md:p-6 rounded-xl md:rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-center md:items-start space-y-2 md:space-y-0 md:space-x-4 text-center md:text-left">
+          <div className="bg-blue-100 p-2 md:p-4 rounded-lg md:rounded-xl text-blue-600 flex-shrink-0">
+            <Users size={20} className="md:w-8 md:h-8" />
           </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-sm md:text-base font-medium truncate">Total Users</p>
-            <p className="text-2xl md:text-3xl font-bold text-gray-800 truncate">{stats.users}</p>
+            <p className="text-gray-500 text-[10px] md:text-base font-medium truncate">Total Users</p>
+            <p className="text-lg md:text-3xl font-bold text-gray-800 truncate">{stats.users}</p>
           </div>
         </div>
         
-        <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
-          <div className="bg-green-100 p-3 md:p-4 rounded-xl text-green-600 flex-shrink-0">
-            <Briefcase size={24} className="md:w-8 md:h-8" />
+        <div className="bg-white p-3 md:p-6 rounded-xl md:rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-center md:items-start space-y-2 md:space-y-0 md:space-x-4 text-center md:text-left">
+          <div className="bg-green-100 p-2 md:p-4 rounded-lg md:rounded-xl text-green-600 flex-shrink-0">
+            <Briefcase size={20} className="md:w-8 md:h-8" />
           </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-sm md:text-base font-medium truncate">Active Jobs</p>
-            <p className="text-2xl md:text-3xl font-bold text-gray-800 truncate">{stats.jobs}</p>
+            <p className="text-gray-500 text-[10px] md:text-base font-medium truncate">Active Jobs</p>
+            <p className="text-lg md:text-3xl font-bold text-gray-800 truncate">{stats.jobs}</p>
           </div>
         </div>
         
-        <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
-          <div className="bg-purple-100 p-3 md:p-4 rounded-xl text-purple-600 flex-shrink-0">
-            <FileText size={24} className="md:w-8 md:h-8" />
+        <div className="bg-white p-3 md:p-6 rounded-xl md:rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-center md:items-start space-y-2 md:space-y-0 md:space-x-4 text-center md:text-left">
+          <div className="bg-purple-100 p-2 md:p-4 rounded-lg md:rounded-xl text-purple-600 flex-shrink-0">
+            <FileText size={20} className="md:w-8 md:h-8" />
           </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-sm md:text-base font-medium truncate">Exams</p>
-            <p className="text-2xl md:text-3xl font-bold text-gray-800 truncate">{stats.exams}</p>
+            <p className="text-gray-500 text-[10px] md:text-base font-medium truncate">Exams</p>
+            <p className="text-lg md:text-3xl font-bold text-gray-800 truncate">{stats.exams}</p>
           </div>
         </div>
         
-        <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
-          <div className="bg-orange-100 p-3 md:p-4 rounded-xl text-orange-600 flex-shrink-0">
-            <CheckSquare size={24} className="md:w-8 md:h-8" />
+        <div className="bg-white p-3 md:p-6 rounded-xl md:rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-center md:items-start space-y-2 md:space-y-0 md:space-x-4 text-center md:text-left">
+          <div className="bg-orange-100 p-2 md:p-4 rounded-lg md:rounded-xl text-orange-600 flex-shrink-0">
+            <CheckSquare size={20} className="md:w-8 md:h-8" />
           </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-sm md:text-base font-medium truncate">Mock Tests</p>
-            <p className="text-2xl md:text-3xl font-bold text-gray-800 truncate">{stats.tests}</p>
+            <p className="text-gray-500 text-[10px] md:text-base font-medium truncate">Mock Tests</p>
+            <p className="text-lg md:text-3xl font-bold text-gray-800 truncate">{stats.tests}</p>
           </div>
         </div>
       </div>

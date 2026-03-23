@@ -51,26 +51,26 @@ export default function Results() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-6">
+    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-12">
-          <h1 className="text-4xl font-black tracking-tight text-gray-900">Your Assessment History</h1>
-          <p className="text-gray-500 text-xs font-bold tracking-widest uppercase mt-1">Review your performance across all mock tests.</p>
+        <div className="mb-8 md:mb-12">
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900">Your Assessment History</h1>
+          <p className="text-gray-500 text-[10px] md:text-xs font-bold tracking-widest uppercase mt-1">Review your performance across all mock tests.</p>
         </div>
 
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white h-32 rounded-3xl border border-gray-100 animate-pulse"></div>
+              <div key={i} className="bg-white h-32 rounded-2xl md:rounded-3xl border border-gray-100 animate-pulse"></div>
             ))}
           </div>
         ) : results.length === 0 ? (
-          <div className="bg-white rounded-[2.5rem] p-20 border border-dashed border-gray-200 flex flex-col items-center text-center">
-            <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mb-6">
-              <Trophy size={40} className="text-gray-300" />
+          <div className="bg-white rounded-2xl md:rounded-[2.5rem] p-10 md:p-20 border border-dashed border-gray-200 flex flex-col items-center text-center">
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-50 rounded-2xl md:rounded-3xl flex items-center justify-center mb-6">
+              <Trophy size={32} md:size={40} className="text-gray-300" />
             </div>
-            <h4 className="text-2xl font-black text-gray-900 mb-2">No Results Found</h4>
-            <p className="text-gray-500 text-xs font-bold tracking-widest uppercase max-w-xs">Attempt a mock test to see your performance history here.</p>
+            <h4 className="text-xl md:text-2xl font-black text-gray-900 mb-2">No Results Found</h4>
+            <p className="text-gray-500 text-[10px] md:text-xs font-bold tracking-widest uppercase max-w-xs">Attempt a mock test to see your performance history here.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -79,41 +79,41 @@ export default function Results() {
                 key={result.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row items-center justify-between gap-6"
+                className="bg-white rounded-2xl md:rounded-3xl p-4 md:p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6"
               >
-                <div className="flex items-center gap-6 w-full md:w-1/3">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${result.accuracy >= 70 ? 'bg-green-50 text-green-600' : result.accuracy >= 40 ? 'bg-yellow-50 text-yellow-600' : 'bg-red-50 text-red-600'}`}>
-                    <Trophy size={28} />
+                <div className="flex items-center gap-4 md:gap-6 w-full md:w-1/3">
+                  <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center flex-shrink-0 ${result.accuracy >= 70 ? 'bg-green-50 text-green-600' : result.accuracy >= 40 ? 'bg-yellow-50 text-yellow-600' : 'bg-red-50 text-red-600'}`}>
+                    <Trophy size={24} md:size={28} />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-black text-gray-900 leading-tight mb-1">{result.tests?.title || "Mock Test"}</h3>
+                  <div className="min-w-0">
+                    <h3 className="text-base md:text-lg font-black text-gray-900 leading-tight mb-1 truncate">{result.tests?.title || "Mock Test"}</h3>
                     <div className="flex items-center gap-2 text-gray-400">
-                      <Calendar size={12} />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">{new Date(result.created_at).toLocaleDateString()}</span>
+                      <Calendar size={10} md:size={12} />
+                      <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest">{new Date(result.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full md:w-1/2">
+                <div className="grid grid-cols-4 gap-2 md:gap-4 w-full md:w-1/2">
                   <div className="text-center">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Score</p>
-                    <p className="text-xl font-black text-gray-900">{result.score}/{result.total_items}</p>
+                    <p className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Score</p>
+                    <p className="text-sm md:text-xl font-black text-gray-900">{result.score}/{result.total_items}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Accuracy</p>
-                    <p className={`text-xl font-black ${result.accuracy >= 70 ? 'text-green-600' : result.accuracy >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>{result.accuracy}%</p>
+                    <p className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Accuracy</p>
+                    <p className={`text-sm md:text-xl font-black ${result.accuracy >= 70 ? 'text-green-600' : result.accuracy >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>{result.accuracy}%</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Time</p>
-                    <p className="text-xl font-black text-gray-900">{formatTime(result.time_taken)}</p>
+                    <p className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Time</p>
+                    <p className="text-sm md:text-xl font-black text-gray-900">{formatTime(result.time_taken)}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+                    <p className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
                     <div className="flex justify-center">
                       {result.accuracy >= 70 ? (
-                        <CheckCircle2 className="text-green-500" size={24} />
+                        <CheckCircle2 className="text-green-500" size={20} md:size={24} />
                       ) : (
-                        <XCircle className="text-red-500" size={24} />
+                        <XCircle className="text-red-500" size={20} md:size={24} />
                       )}
                     </div>
                   </div>
@@ -121,7 +121,7 @@ export default function Results() {
 
                 <button 
                   onClick={() => handleViewDetails(result.id)}
-                  className="w-full md:w-auto bg-gray-50 hover:bg-gray-100 text-gray-600 px-6 py-3 rounded-2xl font-black tracking-widest uppercase text-[10px] flex items-center justify-center gap-2 transition-all"
+                  className="w-full md:w-auto bg-gray-50 hover:bg-gray-100 text-gray-600 px-6 py-3 rounded-xl md:rounded-2xl font-black tracking-widest uppercase text-[9px] md:text-[10px] flex items-center justify-center gap-2 transition-all"
                 >
                   Details <ChevronRight size={14} />
                 </button>

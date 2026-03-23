@@ -23,22 +23,8 @@ export default function UserLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <Header />
+      <Header onMenuClick={toggleSidebar} />
       
-      {/* Mobile Sidebar Toggle */}
-      <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between sticky top-16 z-40">
-        <div className="flex items-center space-x-2 text-blue-600 font-bold">
-          <User size={20} />
-          <span className="truncate max-w-[150px]">{user?.name}</span>
-        </div>
-        <button 
-          onClick={toggleSidebar}
-          className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
-        >
-          {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
       <div className="flex flex-1 relative">
         {/* Sidebar Overlay */}
         {isSidebarOpen && (

@@ -29,7 +29,7 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-100">
       {/* Mobile Header */}
-      <div className="md:hidden bg-gray-900 text-white p-4 flex items-center justify-between sticky top-0 z-50">
+      <div className="md:hidden bg-gray-900 text-white p-4 flex items-center justify-between sticky top-0 z-50 h-16">
         <div className="text-xl font-bold">Admin Panel</div>
         <button 
           onClick={toggleSidebar}
@@ -49,7 +49,7 @@ export default function AdminLayout() {
 
       {/* Sidebar */}
       <aside className={`
-        fixed md:sticky top-0 h-screen z-40
+        fixed md:sticky top-16 md:top-0 h-[calc(100vh-64px)] md:h-screen z-40
         w-64 bg-gray-900 text-white flex flex-col transition-transform duration-300
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>

@@ -122,7 +122,7 @@ function MegaMenuDropdown({ categories, basePath, offsetClass = 'left-0' }: { ca
   );
 }
 
-export default function Header() {
+export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [dynamicMenu, setDynamicMenu] = useState<MenuItem[]>([]);
@@ -149,6 +149,14 @@ export default function Header() {
         icon: getIcon(item.icon_name),
         items: item.items || []
       }));
+  };
+
+  const handleMenuClick = () => {
+    if (onMenuClick) {
+      onMenuClick();
+    } else {
+      setIsMobileMenuOpen(!isMobileMenuOpen);
+    }
   };
 
   return (
@@ -214,7 +222,7 @@ export default function Header() {
 
             <button 
               className="md:hidden text-gray-600"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onClick={handleMenuClick}
             >
               <Menu size={24} />
             </button>
@@ -222,7 +230,7 @@ export default function Header() {
         </div>
       </div>
 
-      {isMobileMenuOpen && (
+      {!onMenuClick && isMobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 py-4 px-4 space-y-4 shadow-lg absolute w-full left-0">
           {dynamicMenu.map((item) => (
             <Link 
