@@ -302,16 +302,16 @@ export default function JobDetails() {
                     
                     {(section.type === 'text' || section.type === 'text_table') && (
                       <div 
-                        className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed
+                        className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-tight
                                    prose-headings:font-bold prose-headings:text-gray-900
-                                   prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3
-                                   prose-p:mb-4
+                                   prose-h3:text-lg prose-h3:mt-4 prose-h3:mb-1
+                                   prose-p:mb-2
                                    prose-a:text-blue-600 prose-a:font-bold hover:prose-a:text-blue-700
                                    prose-table:w-full prose-table:border-collapse prose-table:border prose-table:border-gray-300
                                    prose-th:bg-gray-100 prose-th:border prose-th:border-gray-300 prose-th:p-3 prose-th:text-left prose-th:font-bold
                                    prose-td:border prose-td:border-gray-300 prose-td:p-3
-                                   prose-ul:list-disc prose-ul:pl-5 prose-ul:mb-4
-                                   prose-li:mb-1"
+                                   prose-ul:pl-0 prose-ul:mb-2
+                                   prose-li:mb-0.5"
                         dangerouslySetInnerHTML={{ __html: section.content }}
                       />
                     )}
