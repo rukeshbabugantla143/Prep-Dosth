@@ -56,6 +56,7 @@ export default function ManageUsers() {
             <tr className="bg-gray-50 border-b border-gray-100 text-gray-600">
               <th className="p-4 font-semibold">Username</th>
               <th className="p-4 font-semibold">Email</th>
+              <th className="p-4 font-semibold">Role</th>
               <th className="p-4 font-semibold text-right">Actions</th>
             </tr>
           </thead>
@@ -64,6 +65,11 @@ export default function ManageUsers() {
               <tr key={user.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
                 <td className="p-4 text-gray-800">{user.username || 'N/A'}</td>
                 <td className="p-4 text-gray-600">{user.email || 'N/A'}</td>
+                <td className="p-4">
+                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {user.role || 'user'}
+                  </span>
+                </td>
                 <td className="p-4 flex justify-end gap-3">
                   <button onClick={() => handleDelete(user.id)} className="text-red-600 hover:text-red-800 p-2 bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
                 </td>

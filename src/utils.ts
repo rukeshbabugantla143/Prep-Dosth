@@ -1,4 +1,5 @@
-export const slugify = (text: string) => {
+export const slugify = (text: string | undefined | null) => {
+  if (!text) return "";
   return text
     .toString()
     .toLowerCase()

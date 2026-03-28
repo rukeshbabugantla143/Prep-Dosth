@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../services/supabaseClient";
@@ -98,14 +98,15 @@ function MegaMenuDropdown({ categories, basePath, offsetClass = 'left-0' }: { ca
           {categories.find(c => c.id === activeCategory)?.items?.length > 0 ? (
             <div className="grid grid-cols-2 gap-3">
               {categories.find(c => c.id === activeCategory)?.items.map((item: any) => {
-                const label = typeof item === 'string' ? item : item.label;
+                const label = (typeof item === 'string' ? item : item?.label) || '';
+                const cleanLabel = label.replace(/<[^>]*>?/gm, '');
                 return (
-                  <Link to={`${basePath}?search=${encodeURIComponent(label.replace(/<[^>]*>?/gm, ''))}`} key={label} className="flex items-center gap-3 bg-white border border-gray-200 p-3 rounded-lg hover:border-[#15b86c] hover:shadow-md transition group/item">
+                  <Link to={`${basePath}?search=${encodeURIComponent(cleanLabel)}`} key={label} className="flex items-center gap-3 bg-white border border-gray-200 p-3 rounded-lg hover:border-[#15b86c] hover:shadow-md transition group/item">
                     <div className="bg-red-50 p-1.5 rounded-md text-red-500 group-hover/item:bg-[#15b86c]/10 group-hover/item:text-[#15b86c] transition-colors flex-shrink-0">
                       <Award size={16} />
                     </div>
                     <span className="text-sm font-semibold text-gray-700 group-hover/item:text-[#15b86c] transition-colors truncate">
-                      {label.replace(/<[^>]*>?/gm, '')}
+                      {cleanLabel}
                     </span>
                   </Link>
                 );
@@ -130,6 +131,7 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
 
   useEffect(() => {
     const fetchData = async () => {
+      // Use a single query if possible or at least ensure they are parallel
       const [navRes, megaRes] = await Promise.all([
         supabase.from("navigation").select("*").eq("is_active", true).order("order_index", { ascending: true }),
         supabase.from("mega_menu").select("*").order("order_index", { ascending: true })
@@ -141,7 +143,7 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     fetchData();
   }, []);
 
-  const getMegaMenuCategories = (type: string) => {
+  const getMegaMenuCategories = useMemo(() => (type: string) => {
     return megaMenuData
       .filter(item => item.menu_type === type)
       .map(item => ({
@@ -149,7 +151,7 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
         icon: getIcon(item.icon_name),
         items: item.items || []
       }));
-  };
+  }, [megaMenuData]);
 
   const handleMenuClick = () => {
     if (onMenuClick) {

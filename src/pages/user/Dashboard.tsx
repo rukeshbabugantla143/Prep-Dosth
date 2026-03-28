@@ -110,9 +110,9 @@ export default function UserDashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
           {[
-            { label: "Tests Attempted", value: stats.attempted.toString(), icon: <Trophy className="text-orange-500" />, bg: "bg-orange-50" },
-            { label: "Average Score", value: `${stats.avgScore}%`, icon: <Star className="text-yellow-500" />, bg: "bg-yellow-50" },
-            { label: "Global Rank", value: stats.rank, icon: <LayoutDashboard className="text-purple-500" />, bg: "bg-purple-50" }
+            { label: "Tests Attempted", value: (stats.attempted || 0).toString(), icon: <Trophy className="text-orange-500" />, bg: "bg-orange-50" },
+            { label: "Average Score", value: `${stats.avgScore || 0}%`, icon: <Star className="text-yellow-500" />, bg: "bg-yellow-50" },
+            { label: "Global Rank", value: stats.rank || "#--", icon: <LayoutDashboard className="text-purple-500" />, bg: "bg-purple-50" }
           ].map((stat, i) => (
             <div key={i} className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 border border-gray-100 shadow-sm flex items-center gap-4 md:gap-6">
               <div className={`w-12 h-12 md:w-16 md:h-16 ${stat.bg} rounded-xl md:rounded-2xl flex items-center justify-center flex-shrink-0`}>

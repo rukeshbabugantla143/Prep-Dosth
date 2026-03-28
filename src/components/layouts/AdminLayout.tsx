@@ -21,6 +21,7 @@ export default function AdminLayout() {
     { to: "/admin/menu", icon: <Menu size={20} />, label: "Menu Management" },
     { to: "/admin/mega-menu", icon: <BookOpen size={20} />, label: "Mega Menu Content" },
     { to: "/admin/important-links", icon: <FileText size={20} />, label: "Important Links" },
+    { to: "/admin/categories", icon: <Settings size={20} />, label: "Manage Categories" },
     { to: "/admin/users", icon: <Users size={20} />, label: "Users" },
     { to: "/admin/premium", icon: <Crown size={20} />, label: "Premium Content", className: "text-yellow-500" },
     { to: "/admin/settings", icon: <Settings size={20} />, label: "Settings" },
@@ -62,7 +63,7 @@ export default function AdminLayout() {
               onClick={closeSidebar}
               className={`flex items-center space-x-2 p-2 rounded transition-colors ${
                 location.pathname === link.to 
-                  ? 'bg-gray-800 text-white font-medium' 
+                  ? 'bg-primary text-white font-medium' 
                   : `text-gray-400 hover:bg-gray-800 hover:text-white ${link.className || ''}`
               }`}
             >

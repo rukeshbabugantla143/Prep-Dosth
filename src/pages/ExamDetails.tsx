@@ -14,6 +14,7 @@ export default function ExamDetails() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [importantLinks, setImportantLinks] = useState<any[]>([]);
+  const [tests, setTests] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchExam = async () => {
@@ -29,6 +30,13 @@ export default function ExamDetails() {
             .eq('exam_id', exam.id)
             .order('order_index', { ascending: true });
           if (linksData) setImportantLinks(linksData);
+
+          // Fetch tests for this exam
+          const { data: testsData } = await supabase
+            .from('tests')
+            .select('*')
+            .eq('exam_id', exam.id);
+          if (testsData) setTests(testsData);
         }
       }
       if (error) console.error("Error fetching exam details:", error);
@@ -218,7 +226,7 @@ export default function ExamDetails() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 relative">
       {/* Breadcrumbs */}
       <div className="bg-white border-b border-gray-200 py-3">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -264,9 +272,9 @@ export default function ExamDetails() {
       </div>
 
       {/* Sticky Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-[64px] z-40 shadow-sm">
+      <div className="bg-white border-b border-gray-200 sticky top-0 inset-x-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8 overflow-x-auto scrollbar-hide">
+          <div className="flex space-x-8 overflow-x-auto scrollbar-hide w-full">
             {tabs.map((tab) => (
               <a
                 key={tab.id}
@@ -292,6 +300,28 @@ export default function ExamDetails() {
           {/* Left Column (Content) */}
           <div className="lg:w-2/3 space-y-6">
             
+            {/* Tests Section */}
+            {tests.length > 0 && (
+              <div id="tests" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4 flex items-center gap-2">
+                  <BookOpen className="text-[#15b86c]" /> Available Tests
+                </h2>
+                <div className="overflow-x-auto pb-4">
+                  <div className="flex gap-4">
+                    {tests.map((test) => (
+                      <div key={test.id} className="bg-gray-50 p-4 rounded-xl border border-gray-200 min-w-[250px] flex flex-col justify-between">
+                        <h4 className="font-bold text-gray-900 text-sm mb-2">{test.title}</h4>
+                        <p className="text-xs text-gray-500 mb-4">{test.timeLimit} minutes</p>
+                        <Link to={`/test/${test.id}`} className="bg-[#15b86c] text-white text-xs font-bold py-2 px-4 rounded-lg hover:bg-[#12a15e] transition text-center">
+                          Start Test
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {sections.length > 0 ? (
               <div className="space-y-6">
                 {sections.map((section) => (

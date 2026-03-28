@@ -51,7 +51,7 @@ export default function Results() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-6">
+    <div className="min-h-screen bg-white p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 md:mb-12">
           <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900">Your Assessment History</h1>
@@ -97,7 +97,7 @@ export default function Results() {
                 <div className="grid grid-cols-4 gap-2 md:gap-4 w-full md:w-1/2">
                   <div className="text-center">
                     <p className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Score</p>
-                    <p className="text-sm md:text-xl font-black text-gray-900">{result.score}/{result.total_items}</p>
+                    <p className="text-sm md:text-xl font-black text-gray-900">{result.score}/{result.total_marks || result.total_items}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Accuracy</p>

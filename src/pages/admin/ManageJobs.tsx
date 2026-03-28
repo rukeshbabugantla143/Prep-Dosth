@@ -353,7 +353,18 @@ export default function ManageJobs() {
 
   const fetchJobs = async () => {
     const { data, error } = await supabase.from("jobs").select("*");
-    if (data) setJobs(data);
+    if (data) {
+      setJobs(data);
+      // Extract unique departments/categories from existing jobs
+      const dbCategories = data
+        .map(job => job.department)
+        .filter((cat): cat is string => !!cat);
+      
+      setCategories(prev => {
+        const combined = Array.from(new Set([...prev, ...dbCategories]));
+        return combined.sort();
+      });
+    }
     if (error) console.error("Error fetching jobs:", error);
   };
 
@@ -706,7 +717,21 @@ export default function ManageJobs() {
                   {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
                 <input type="text" placeholder="New Category" value={newCategory} onChange={e => setNewCategory(e.target.value)} className="border p-3 rounded-lg w-32 focus:ring-2 focus:ring-blue-500 outline-none" />
-                <button type="button" onClick={() => { if(newCategory && !categories.includes(newCategory)) { setCategories([...categories, newCategory]); setNewCategory(''); } }} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">+</button>
+                <button 
+                  type="button" 
+                  onClick={() => { 
+                    if(newCategory) {
+                      if(!categories.includes(newCategory)) {
+                        setCategories(prev => [...prev, newCategory].sort());
+                      }
+                      setCurrentJob({...currentJob, department: newCategory});
+                      setNewCategory('');
+                    }
+                  }} 
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                >
+                  +
+                </button>
               </div>
             </div>
             <div className="space-y-2">

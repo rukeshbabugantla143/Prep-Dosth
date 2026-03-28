@@ -10,6 +10,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
+import MathText from "../../components/common/MathText";
 
 export default function TestReview() {
   const { resultId } = useParams();
@@ -76,7 +77,7 @@ export default function TestReview() {
           <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center">
             <Trophy size={24} className="mx-auto text-orange-500 mb-2" />
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Score</p>
-            <p className="text-2xl font-black text-gray-900">{result.score}/{result.total_items}</p>
+            <p className="text-2xl font-black text-gray-900">{result.score}/{result.total_marks || result.total_items}</p>
           </div>
           <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center">
             <CheckCircle2 size={24} className="mx-auto text-green-500 mb-2" />
@@ -121,7 +122,9 @@ export default function TestReview() {
                   )}
                 </div>
 
-                <h3 className="text-lg font-bold text-gray-900 mb-8 leading-relaxed">{q.text}</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-8 leading-relaxed">
+                  <MathText text={q.questionText || q.text} />
+                </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {q.options.map((option: string, oIdx: number) => {
@@ -147,7 +150,7 @@ export default function TestReview() {
                         key={oIdx}
                         className={`p-4 rounded-2xl border-2 ${borderColor} ${bgColor} ${textColor} font-bold text-sm flex items-center justify-between`}
                       >
-                        <span>{option}</span>
+                        <MathText text={option} />
                         {isCorrectOption && <CheckCircle2 size={16} className="text-green-600" />}
                         {isSelected && !isCorrect && <XCircle size={16} className="text-red-600" />}
                       </div>
@@ -160,7 +163,9 @@ export default function TestReview() {
                     <AlertCircle size={18} className="text-yellow-600 mt-0.5" />
                     <div>
                       <p className="text-xs font-bold text-yellow-800 uppercase tracking-widest mb-1">Correction</p>
-                      <p className="text-sm text-yellow-700 font-medium">You selected <span className="font-bold">"{userAnswer}"</span>, but the correct answer is <span className="font-bold">"{q.correctAnswer}"</span>.</p>
+                      <p className="text-sm text-yellow-700 font-medium">
+                        You selected <span className="font-bold">"<MathText text={userAnswer} />"</span>, but the correct answer is <span className="font-bold">"<MathText text={q.correctAnswer} />"</span>.
+                      </p>
                     </div>
                   </div>
                 )}

@@ -1,6 +1,7 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import ThemeInitializer from "./components/ThemeInitializer";
 
 // Layouts
 import MainLayout from "./components/layouts/MainLayout";
@@ -9,44 +10,51 @@ import UserLayout from "./components/layouts/UserLayout";
 import DashboardRedirect from "./components/DashboardRedirect";
 import ScrollToTop from "./components/common/ScrollToTop";
 
-// Pages
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Jobs from "./pages/Jobs";
-import Exams from "./pages/Exams";
-import Tests from "./pages/Tests";
-import Premium from "./pages/Premium";
-import Notifications from "./pages/Notifications";
-import About from "./pages/About";
-import Contact from "./pages/Contact";
-
-import JobDetails from "./pages/JobDetails";
-import ExamDetails from "./pages/ExamDetails";
+// Lazy Pages
+const Home = lazy(() => import("./pages/Home"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const Jobs = lazy(() => import("./pages/Jobs"));
+const Exams = lazy(() => import("./pages/Exams"));
+const Tests = lazy(() => import("./pages/Tests"));
+const Premium = lazy(() => import("./pages/Premium"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const About = lazy(() => import("./pages/About"));
+const Contact = lazy(() => import("./pages/Contact"));
+const JobDetails = lazy(() => import("./pages/JobDetails"));
+const ExamDetails = lazy(() => import("./pages/ExamDetails"));
 
 // Admin Pages
-import AdminDashboard from "./pages/admin/Dashboard";
-import ManageJobs from "./pages/admin/ManageJobs";
-import ManageExams from "./pages/admin/ManageExams";
-import ManageTests from "./pages/admin/ManageTests";
-import ManageHome from "./pages/admin/ManageHome";
-import ManageNotifications from "./pages/admin/ManageNotifications";
-import ManageMenu from "./pages/admin/ManageMenu";
-import ManageMegaMenu from "./pages/admin/ManageMegaMenu";
-import ManageImportantLinks from "./pages/admin/ManageImportantLinks";
-import ManageUsers from "./pages/admin/ManageUsers";
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const ManageJobs = lazy(() => import("./pages/admin/ManageJobs"));
+const ManageExams = lazy(() => import("./pages/admin/ManageExams"));
+const ManageTests = lazy(() => import("./pages/admin/ManageTests"));
+const ManageHome = lazy(() => import("./pages/admin/ManageHome"));
+const ManageNotifications = lazy(() => import("./pages/admin/ManageNotifications"));
+const ManageMenu = lazy(() => import("./pages/admin/ManageMenu"));
+const ManageMegaMenu = lazy(() => import("./pages/admin/ManageMegaMenu"));
+const ManageImportantLinks = lazy(() => import("./pages/admin/ManageImportantLinks"));
+const ManageUsers = lazy(() => import("./pages/admin/ManageUsers"));
+const ManageCategories = lazy(() => import("./pages/admin/ManageCategories"));
+const Settings = lazy(() => import("./pages/admin/Settings"));
 
 // User Pages
-import UserDashboard from "./pages/user/Dashboard";
-import AttemptTest from "./pages/user/AttemptTest";
-import Results from "./pages/user/Results";
-import Profile from "./pages/user/Profile";
-import TestReview from "./pages/user/TestReview";
+const UserDashboard = lazy(() => import("./pages/user/Dashboard"));
+const AttemptTest = lazy(() => import("./pages/user/AttemptTest"));
+const Results = lazy(() => import("./pages/user/Results"));
+const Profile = lazy(() => import("./pages/user/Profile"));
+const TestReview = lazy(() => import("./pages/user/TestReview"));
+
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+  </div>
+);
 
 const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: "admin" | "user" }) => {
   const { user, loading } = useAuth();
   
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <LoadingSpinner />;
   if (!user) return <Navigate to="/login" />;
   
   // Admin can access everything
@@ -61,55 +69,60 @@ const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 
 export default function App() {
   return (
     <AuthProvider>
+      <ThemeInitializer />
       <Router>
         <ScrollToTop />
-        <Routes>
-          {/* Public Routes */}
-          <Route element={<MainLayout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/jobs" element={<Jobs />} />
-            <Route path="/jobs/:slug" element={<JobDetails />} />
-            <Route path="/exams" element={<Exams />} />
-            <Route path="/exams/:slug" element={<ExamDetails />} />
-            <Route path="/tests" element={<Tests />} />
-            <Route path="/premium" element={<Premium />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-          </Route>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            {/* Public Routes */}
+            <Route element={<MainLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/jobs" element={<Jobs />} />
+              <Route path="/jobs/:slug" element={<JobDetails />} />
+              <Route path="/exams" element={<Exams />} />
+              <Route path="/exams/:slug" element={<ExamDetails />} />
+              <Route path="/tests" element={<Tests />} />
+              <Route path="/premium" element={<Premium />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+            </Route>
 
-          {/* Dashboard Redirect */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <DashboardRedirect />
-            </ProtectedRoute>
-          } />
+            {/* Dashboard Redirect */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <DashboardRedirect />
+              </ProtectedRoute>
+            } />
 
-          {/* User Routes */}
-          <Route path="/user" element={<ProtectedRoute role="user"><UserLayout /></ProtectedRoute>}>
-            <Route index element={<UserDashboard />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="results" element={<Results />} />
-            <Route path="results/:resultId" element={<TestReview />} />
-          </Route>
-          <Route path="/user/test/:id" element={<ProtectedRoute role="user"><AttemptTest /></ProtectedRoute>} />
+            {/* User Routes */}
+            <Route path="/user" element={<ProtectedRoute role="user"><UserLayout /></ProtectedRoute>}>
+              <Route index element={<UserDashboard />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="results" element={<Results />} />
+              <Route path="results/:resultId" element={<TestReview />} />
+            </Route>
+            <Route path="/user/test/:id" element={<ProtectedRoute role="user"><AttemptTest /></ProtectedRoute>} />
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="jobs" element={<ManageJobs />} />
-            <Route path="exams" element={<ManageExams />} />
-            <Route path="tests" element={<ManageTests />} />
-            <Route path="home" element={<ManageHome />} />
-            <Route path="notifications" element={<ManageNotifications />} />
-            <Route path="menu" element={<ManageMenu />} />
-            <Route path="mega-menu" element={<ManageMegaMenu />} />
-            <Route path="important-links" element={<ManageImportantLinks />} />
-            <Route path="users" element={<ManageUsers />} />
-          </Route>
-        </Routes>
+            {/* Admin Routes */}
+            <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="jobs" element={<ManageJobs />} />
+              <Route path="exams" element={<ManageExams />} />
+              <Route path="tests" element={<ManageTests />} />
+              <Route path="home" element={<ManageHome />} />
+              <Route path="notifications" element={<ManageNotifications />} />
+              <Route path="menu" element={<ManageMenu />} />
+              <Route path="mega-menu" element={<ManageMegaMenu />} />
+              <Route path="important-links" element={<ManageImportantLinks />} />
+              <Route path="users" element={<ManageUsers />} />
+              <Route path="categories" element={<ManageCategories />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+          </Routes>
+        </Suspense>
       </Router>
     </AuthProvider>
   );

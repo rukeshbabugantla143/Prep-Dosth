@@ -7,6 +7,8 @@ export default function ManageNotifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentNotification, setCurrentNotification] = useState<any>({});
+  const [types, setTypes] = useState<string[]>(['exam', 'alert', 'test', 'result']);
+  const [newType, setNewType] = useState('');
 
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -23,7 +25,18 @@ export default function ManageNotifications() {
 
   const fetchNotifications = async () => {
     const { data, error } = await supabase.from("notifications").select("*");
-    if (data) setNotifications(data);
+    if (data) {
+      setNotifications(data);
+      // Extract unique types from existing notifications
+      const dbTypes = data
+        .map(n => n.type)
+        .filter((t): t is string => !!t);
+      
+      setTypes(prev => {
+        const combined = Array.from(new Set([...prev, ...dbTypes]));
+        return combined.sort();
+      });
+    }
     if (error) console.error("Error fetching notifications:", error);
   };
 
@@ -76,13 +89,42 @@ export default function ManageNotifications() {
           <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <input type="text" placeholder="Title" value={currentNotification.title || ""} onChange={e => setCurrentNotification({...currentNotification, title: e.target.value})} className="border p-3 rounded-lg w-full" required />
             <input type="text" placeholder="Date (e.g., 2 hours ago)" value={currentNotification.date || ""} onChange={e => setCurrentNotification({...currentNotification, date: e.target.value})} className="border p-3 rounded-lg w-full" required />
-            <select value={currentNotification.type || ""} onChange={e => setCurrentNotification({...currentNotification, type: e.target.value})} className="border p-3 rounded-lg w-full bg-white" required>
-              <option value="">Select Type</option>
-              <option value="exam">Exam</option>
-              <option value="alert">Alert</option>
-              <option value="test">Test</option>
-              <option value="result">Result</option>
-            </select>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Type</label>
+              <div className="flex gap-2">
+                <select 
+                  value={currentNotification.type || ""} 
+                  onChange={e => setCurrentNotification({...currentNotification, type: e.target.value})} 
+                  className="border p-3 rounded-lg w-full bg-white" 
+                  required
+                >
+                  <option value="">Select Type</option>
+                  {types.map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
+                </select>
+                <input 
+                  type="text" 
+                  placeholder="New Type" 
+                  value={newType} 
+                  onChange={e => setNewType(e.target.value)} 
+                  className="border p-3 rounded-lg w-32 focus:ring-2 focus:ring-blue-500 outline-none" 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => { 
+                    if(newType) {
+                      if(!types.includes(newType)) {
+                        setTypes(prev => [...prev, newType].sort());
+                      }
+                      setCurrentNotification({...currentNotification, type: newType});
+                      setNewType('');
+                    }
+                  }} 
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                >
+                  +
+                </button>
+              </div>
+            </div>
             
             <div className="md:col-span-2 flex gap-4 justify-end mt-4">
               <button type="button" onClick={() => setIsEditing(false)} className="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-300 transition">Cancel</button>
