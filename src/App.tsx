@@ -23,6 +23,7 @@ const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
 const JobDetails = lazy(() => import("./pages/JobDetails"));
 const ExamDetails = lazy(() => import("./pages/ExamDetails"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 
 // Admin Pages
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
@@ -51,17 +52,26 @@ const LoadingSpinner = () => (
   </div>
 );
 
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) return <LoadingSpinner />;
+  if (user) return <Navigate to="/dashboard" replace />;
+  
+  return <>{children}</>;
+};
+
 const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: "admin" | "user" }) => {
   const { user, loading } = useAuth();
   
   if (loading) return <LoadingSpinner />;
-  if (!user) return <Navigate to="/login" />;
+  if (!user) return <Navigate to="/login" replace />;
   
   // Admin can access everything
   if (user.role === "admin") return <>{children}</>;
   
   // If a specific role is required and user doesn't have it
-  if (role && user.role !== role) return <Navigate to="/" />;
+  if (role && user.role !== role) return <Navigate to="/" replace />;
   
   return <>{children}</>;
 };
@@ -77,8 +87,8 @@ export default function App() {
             {/* Public Routes */}
             <Route element={<MainLayout />}>
               <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+              <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+              <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
               <Route path="/jobs" element={<Jobs />} />
               <Route path="/jobs/:slug" element={<JobDetails />} />
               <Route path="/exams" element={<Exams />} />
@@ -88,6 +98,7 @@ export default function App() {
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
             </Route>
 
             {/* Dashboard Redirect */}

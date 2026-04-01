@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../services/supabaseClient";
 import { useNavigate } from "react-router-dom";
-import { 
-  FileText, 
-  Clock, 
-  ChevronRight, 
-  Trophy, 
-  ShieldCheck, 
-  User, 
+import {
+  FileText,
+  Clock,
+  ChevronRight,
+  Trophy,
+  ShieldCheck,
+  User,
   LayoutDashboard,
   Zap,
   Star,
@@ -32,21 +32,31 @@ export default function UserDashboard() {
       setLoading(true);
       // Fetch available tests
       const { data: testsData, error: testsError } = await supabase.from("tests").select("*").order("created_at", { ascending: false });
-      if (testsData) setTests(testsData);
-      if (testsError) console.error("Error fetching tests:", testsError);
+      if (testsData) {
+        const processedTests = testsData.map(t => ({
+          ...t,
+          slug: t.slug || t.id // Use ID as slug if slug is missing, AttemptTest handles both
+        }));
+        setTests(processedTests);
+      }
+      if (testsError) {
+        console.error("Error fetching tests:", testsError);
+      }
 
-      // Fetch user stats
+      // Fetch user stats and recent results
       if (user?.id) {
         const { data: resultsData, error: resultsError } = await supabase
           .from("test_results")
-          .select("accuracy")
-          .eq("user_id", user.id);
-        
+          .select("*, tests(title)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
         if (resultsData && resultsData.length > 0) {
           const attempted = resultsData.length;
           const totalAccuracy = resultsData.reduce((acc, curr) => acc + curr.accuracy, 0);
           const avgScore = Math.round(totalAccuracy / attempted);
           setStats(prev => ({ ...prev, attempted, avgScore }));
+          setRecentResults(resultsData.slice(0, 3));
         }
         if (resultsError) console.error("Error fetching stats:", resultsError);
       }
@@ -54,6 +64,8 @@ export default function UserDashboard() {
     };
     fetchData();
   }, [user]);
+
+  const [recentResults, setRecentResults] = useState<any[]>([]);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-4 md:p-6">
@@ -69,7 +81,7 @@ export default function UserDashboard() {
               <p className="text-[8px] md:text-[10px] font-bold text-gray-400 tracking-widest uppercase mt-1">Secure Portal V2.1</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3 md:gap-4 bg-white border border-gray-200 px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl shadow-sm w-full sm:w-auto">
             <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
               <User size={16} className="text-gray-400" />
@@ -101,7 +113,7 @@ export default function UserDashboard() {
               </button>
             </div>
           </div>
-          
+
           {/* Decorative Elements */}
           <div className="absolute top-0 right-0 w-full md:w-1/2 h-full bg-gradient-to-l from-blue-600/20 to-transparent pointer-events-none"></div>
           <div className="absolute -bottom-24 -right-24 w-64 md:w-96 h-64 md:h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -125,6 +137,44 @@ export default function UserDashboard() {
             </div>
           ))}
         </div>
+
+        {/* Recent Activity */}
+        {recentResults.length > 0 && (
+          <div className="mb-8 md:mb-12">
+            <div className="flex justify-between items-end mb-6 md:mb-8">
+              <div>
+                <h3 className="text-2xl md:text-3xl font-black tracking-tight text-gray-900">Recent Activity</h3>
+                <p className="text-gray-500 text-[10px] font-bold tracking-widest uppercase mt-1">Review your latest performance metrics.</p>
+              </div>
+              <button onClick={() => navigate("/user/results")} className="text-blue-600 font-black tracking-widest uppercase text-[10px] flex items-center gap-2 hover:gap-3 transition-all">
+                View All Results <ChevronRight size={16} />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+              {recentResults.map((result, i) => (
+                <div key={i} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                      <Trophy size={18} className="text-blue-600" />
+                    </div>
+                    <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg uppercase tracking-widest">
+                      {result.accuracy}% Score
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-black text-gray-900 mb-2 line-clamp-1 uppercase tracking-tight">
+                    {result.tests?.title || "Mock Test"}
+                  </h4>
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <Clock size={12} />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">
+                      {new Date(result.created_at).toLocaleDateString('en-GB')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Mock Tests Section */}
         <div className="mb-8 md:mb-12">
@@ -155,7 +205,7 @@ export default function UserDashboard() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {tests.map((test) => (
-                <motion.div 
+                <motion.div
                   key={test.id}
                   whileHover={{ y: -8 }}
                   className="bg-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-all group"
@@ -169,11 +219,11 @@ export default function UserDashboard() {
                       <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{test.timeLimit}m</span>
                     </div>
                   </div>
-                  
+
                   <h4 className="text-lg md:text-xl font-black text-gray-900 mb-4 leading-tight min-h-[3rem] line-clamp-2">
                     {test.title}
                   </h4>
-                  
+
                   <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8 text-gray-400">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <LayoutDashboard size={14} className="flex-shrink-0" />
@@ -186,8 +236,8 @@ export default function UserDashboard() {
                     </div>
                   </div>
 
-                  <button 
-                    onClick={() => navigate(`/user/test/${test.id}`)}
+                  <button
+                    onClick={() => navigate(`/user/test/${test.slug}`)}
                     className="w-full bg-[#0f172a] hover:bg-blue-600 text-white py-3 md:py-4 rounded-xl md:rounded-2xl font-black tracking-widest uppercase text-[10px] transition-all flex items-center justify-center gap-2"
                   >
                     Start Assessment <ArrowRight size={16} />

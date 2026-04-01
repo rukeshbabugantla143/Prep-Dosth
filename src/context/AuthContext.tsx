@@ -24,30 +24,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const fetchProfile = async (supabaseUser: SupabaseUser) => {
       console.log("Fetching profile for:", supabaseUser.id);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", supabaseUser.id);
       
-      if (error) {
-        console.error("Error fetching profile:", error);
+      // SET FALLBACK USER IMMEDIATELY: prevents 'Null User' redirect blocks
+      const fallbackUser: User = {
+        id: supabaseUser.id,
+        name: supabaseUser.user_metadata?.name || supabaseUser.email!.split('@')[0],
+        email: supabaseUser.email!,
+        role: (supabaseUser.user_metadata?.role as any) || 'user'
+      };
+      setUser(fallbackUser);
+
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", supabaseUser.id);
+        
+        if (error) {
+          // If recursion identified, we use the fallback role (from JWT/metadata)
+          if (error.code === '42P17') {
+            console.error("Auth: Infinite recursion detected in profiles policy. Using session fallback.");
+          } else {
+            throw error;
+          }
+        }
+        
+        if (data && data.length > 0) {
+          const profile = data[0];
+          setUser({
+            id: supabaseUser.id,
+            name: profile.name || fallbackUser.name,
+            email: supabaseUser.email!,
+            role: profile.role || fallbackUser.role,
+          });
+        }
+      } catch (err) {
+        console.error("Auth: Profile fetch failed (using fallback):", err);
+      } finally {
         setLoading(false);
-        return;
       }
-      
-      if (data && data.length > 0) {
-        const profile = data[0];
-        console.log("Profile fetched:", profile);
-        setUser({
-          id: supabaseUser.id,
-          name: profile.name,
-          email: supabaseUser.email!,
-          role: profile.role,
-        });
-      } else {
-        console.warn("No profile found for user:", supabaseUser.id);
-      }
-      setLoading(false);
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {

@@ -9,7 +9,8 @@ import {
   XCircle, 
   ChevronRight,
   FileText,
-  Calendar
+  Calendar,
+  Target
 } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -54,9 +55,46 @@ export default function Results() {
     <div className="min-h-screen bg-white p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900">Your Assessment History</h1>
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight text-gray-900 uppercase">Assessment History</h1>
           <p className="text-gray-500 text-[10px] md:text-xs font-bold tracking-widest uppercase mt-1">Review your performance across all mock tests.</p>
         </div>
+
+        {/* Performance Overview Cards */}
+        {!loading && results.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center gap-6">
+              <div className="w-16 h-16 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-600 shrink-0">
+                <FileText size={28} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Attempted</p>
+                <p className="text-3xl font-black text-gray-900 leading-none">{results.length}</p>
+              </div>
+            </div>
+            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center gap-6">
+              <div className="w-16 h-16 bg-green-50 rounded-3xl flex items-center justify-center text-green-600 shrink-0">
+                <Target size={28} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Avg. Accuracy</p>
+                <p className="text-3xl font-black text-gray-900 leading-none">
+                  {Math.round(results.reduce((acc, r) => acc + r.accuracy, 0) / results.length)}%
+                </p>
+              </div>
+            </div>
+            <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center gap-6">
+              <div className="w-16 h-16 bg-orange-50 rounded-3xl flex items-center justify-center text-orange-600 shrink-0">
+                <Trophy size={28} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Best Score</p>
+                <p className="text-3xl font-black text-gray-900 leading-none">
+                  {Math.max(...results.map(r => r.score || 0))}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="space-y-4">

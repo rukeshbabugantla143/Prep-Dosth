@@ -24,6 +24,7 @@
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
     "express": "^5.2.1",
+    "html2canvas": "^1.4.1",
     "jodit-react": "^5.3.21",
     "jszip": "^3.10.1",
     "katex": "^0.16.44",

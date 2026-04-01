@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import { slugify } from '../utils';
-import { Calendar, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, BookOpen, PlayCircle, Download, Bell, Play, X, Link as LinkIcon, AlertCircle, Info } from 'lucide-react';
+import { Calendar, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, BookOpen, PlayCircle, Download, Bell, Play, X, Link as LinkIcon, AlertCircle, Info, Trophy } from 'lucide-react';
 import { format } from 'date-fns';
 import FAQSection from '../components/FAQSection';
 import IconList from '../components/common/IconList';
@@ -18,25 +18,19 @@ export default function ExamDetails() {
 
   useEffect(() => {
     const fetchExam = async () => {
+      setLoading(true);
       const { data, error } = await supabase.from('exams').select('*');
       if (data) {
-        const exam = data.find(e => slugify(e.title) === slug);
-        setExam(exam);
-        if (exam) {
+        const foundExam = data.find(e => slugify(e.title) === slug);
+        setExam(foundExam);
+        if (foundExam) {
           // Fetch important links for this exam
           const { data: linksData } = await supabase
             .from('important_links')
             .select('*')
-            .eq('exam_id', exam.id)
+            .eq('exam_id', foundExam.id)
             .order('order_index', { ascending: true });
           if (linksData) setImportantLinks(linksData);
-
-          // Fetch tests for this exam
-          const { data: testsData } = await supabase
-            .from('tests')
-            .select('*')
-            .eq('exam_id', exam.id);
-          if (testsData) setTests(testsData);
         }
       }
       if (error) console.error("Error fetching exam details:", error);
@@ -45,8 +39,8 @@ export default function ExamDetails() {
     fetchExam();
   }, [slug]);
 
-  const { toc, sections, status, customDates, officialLinks, notificationLinks, youtubeVideos, logoUrl } = React.useMemo(() => {
-    if (!exam?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [], youtubeVideos: [], logoUrl: '' };
+  const { toc, sections, status, customDates, officialLinks, notificationLinks, youtubeVideos, logoUrl, featuredTestIds } = React.useMemo(() => {
+    if (!exam?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [], youtubeVideos: [], logoUrl: '', featuredTestIds: [] };
     
     const generatedToc: { id: string, text: string }[] = [];
     const generatedSections: any[] = [];
@@ -56,6 +50,7 @@ export default function ExamDetails() {
     let examNotificationLinks: { label: string, url: string, color?: string }[] = [];
     let examYoutubeVideos: { url: string, title: string }[] = [];
     let examLogoUrl = '';
+    let examFeaturedTestIds: string[] = [];
 
     try {
       const trimmedDesc = exam.description.trim();
@@ -67,14 +62,12 @@ export default function ExamDetails() {
           examStatus = parsedData.status || 'Confirmed';
           examCustomDates = parsedData.important_dates || [];
           examLogoUrl = parsedData.logo_url || '';
+          examFeaturedTestIds = parsedData.featured_test_ids || [];
           
-          // Handle multiple links
           if (parsedData.official_links) {
             examOfficialLinks = parsedData.official_links.map((l: any) => ({ ...l, color: l.color || 'blue' }));
           } else if (parsedData.official_website) {
             examOfficialLinks = [{ label: 'Official Website', url: parsedData.official_website, color: 'blue' }];
-          } else if (exam.link) {
-            examOfficialLinks = [{ label: 'Official Website', url: exam.link, color: 'blue' }];
           }
 
           if (parsedData.notification_links) {
@@ -83,7 +76,6 @@ export default function ExamDetails() {
             examNotificationLinks = [{ label: 'Notification PDF', url: parsedData.notification_pdf, color: 'red' }];
           }
           
-          // Handle both legacy string array and new object array
           const rawVideos = parsedData.youtube_videos || [];
           examYoutubeVideos = rawVideos.map((v: any) => {
             if (typeof v === 'string') return { url: v, title: 'Preparation Video' };
@@ -91,99 +83,100 @@ export default function ExamDetails() {
           });
         }
 
-        sectionsToProcess.forEach((sec: any) => {
+        sectionsToProcess.forEach((sec: any, index: number) => {
           const id = sec.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
           generatedToc.push({ id, text: sec.title });
+          generatedSections.push({ ...sec, id });
           
-          generatedSections.push({
-            ...sec,
-            id
-          });
+          // Inject TOC link for mock tests after the 2nd section
+          if (index === 1 && examFeaturedTestIds.length > 0) {
+            generatedToc.push({ id: 'mock-tests', text: 'Practice Mock Tests' });
+          }
         });
         
-        if (examYoutubeVideos.length > 0) {
-          generatedToc.push({ id: 'videos', text: 'Preparation Videos' });
+        // If there were fewer than 2 sections, add the TOC link at the end
+        if (sectionsToProcess.length < 2 && examFeaturedTestIds.length > 0) {
+          generatedToc.push({ id: 'mock-tests', text: 'Practice Mock Tests' });
         }
         
+        if (examYoutubeVideos.length > 0) generatedToc.push({ id: 'videos', text: 'Preparation Videos' });
+
         return { 
-          toc: generatedToc, 
-          sections: generatedSections, 
-          status: examStatus, 
-          customDates: examCustomDates,
-          officialLinks: examOfficialLinks,
-          notificationLinks: examNotificationLinks,
-          youtubeVideos: examYoutubeVideos,
-          logoUrl: examLogoUrl
+          toc: generatedToc, sections: generatedSections, status: examStatus, 
+          customDates: examCustomDates, officialLinks: examOfficialLinks, 
+          notificationLinks: examNotificationLinks, youtubeVideos: examYoutubeVideos, 
+          logoUrl: examLogoUrl, featuredTestIds: examFeaturedTestIds 
         };
       }
     } catch (e) {
       console.error("Failed to parse JSON description, falling back to HTML", e);
     }
     
+    // Fallback for HTML content
     const parser = new DOMParser();
     const doc = parser.parseFromString(exam.description, 'text/html');
-    
     let currentSectionId = 'overview';
     let currentSectionTitle = 'Overview';
     let currentContent: Node[] = [];
     
     Array.from(doc.body.childNodes).forEach((node) => {
       if (node.nodeName === 'H2') {
-        // Save previous section
         if (currentContent.length > 0 || currentSectionId !== 'overview') {
           const tempDiv = document.createElement('div');
           currentContent.forEach(n => tempDiv.appendChild(n.cloneNode(true)));
-          if (tempDiv.innerHTML.trim() || currentSectionId !== 'overview') {
-            generatedSections.push({
-              id: currentSectionId,
-              title: currentSectionTitle,
-              content: tempDiv.innerHTML
-            });
-          }
+          generatedSections.push({ id: currentSectionId, title: currentSectionTitle, content: tempDiv.innerHTML });
         }
-        
         const text = node.textContent || 'Section';
         const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        
         currentSectionId = id;
         currentSectionTitle = text;
         currentContent = [];
-        
         generatedToc.push({ id, text });
       } else {
         currentContent.push(node);
       }
     });
     
-    // Push the last section
     if (currentContent.length > 0 || currentSectionId !== 'overview') {
       const tempDiv = document.createElement('div');
       currentContent.forEach(n => tempDiv.appendChild(n.cloneNode(true)));
-      if (tempDiv.innerHTML.trim() || currentSectionId !== 'overview') {
-        generatedSections.push({
-          id: currentSectionId,
-          title: currentSectionTitle,
-          content: tempDiv.innerHTML
-        });
-      }
+      generatedSections.push({ id: currentSectionId, title: currentSectionTitle, content: tempDiv.innerHTML });
     }
     
-    // Add Overview to TOC if it exists and isn't there
     if (generatedSections.length > 0 && generatedSections[0].id === 'overview') {
-      generatedToc.unshift({ id: 'overview', text: 'Overview' });
+      // For HTML fallback, we don't have featuredTestIds usually, 
+      // but if we did, we'd handle it similarly. 
+      // Current design uses JSON for linked tests.
     }
     
     return { 
-      toc: generatedToc, 
-      sections: generatedSections, 
-      status: 'Confirmed', 
-      customDates: [],
+      toc: generatedToc, sections: generatedSections, status: 'Confirmed', customDates: [],
       officialLinks: exam.link ? [{ label: 'Official Website', url: exam.link }] : [],
-      notificationLinks: [],
-      youtubeVideos: [],
-      logoUrl: ''
+      notificationLinks: [], youtubeVideos: [], logoUrl: '', featuredTestIds: []
     };
   }, [exam?.description, exam?.link]);
+
+  useEffect(() => {
+    const fetchFeaturedTests = async () => {
+      if (featuredTestIds && featuredTestIds.length > 0) {
+        const { data: testsData, error: testsError } = await supabase
+          .from('tests')
+          .select('*')
+          .in('id', featuredTestIds);
+        
+        if (testsData) {
+          const sortedTests = [...testsData].sort((a, b) => 
+            featuredTestIds.indexOf(a.id) - featuredTestIds.indexOf(b.id)
+          );
+          setTests(sortedTests);
+        }
+        if (testsError) console.error("Error fetching featured tests:", testsError);
+      } else {
+        setTests([]);
+      }
+    };
+    fetchFeaturedTests();
+  }, [featuredTestIds]);
 
   const getColorClasses = (color?: string) => {
     switch (color) {
@@ -196,6 +189,7 @@ export default function ExamDetails() {
       default: return 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-100';
     }
   };
+
 
   if (loading) {
     return (
@@ -300,105 +294,174 @@ export default function ExamDetails() {
           {/* Left Column (Content) */}
           <div className="lg:w-2/3 space-y-6">
             
-            {/* Tests Section */}
-            {tests.length > 0 && (
-              <div id="tests" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b border-gray-100 pb-4 flex items-center gap-2">
-                  <BookOpen className="text-[#15b86c]" /> Available Tests
-                </h2>
-                <div className="overflow-x-auto pb-4">
-                  <div className="flex gap-4">
-                    {tests.map((test) => (
-                      <div key={test.id} className="bg-gray-50 p-4 rounded-xl border border-gray-200 min-w-[250px] flex flex-col justify-between">
-                        <h4 className="font-bold text-gray-900 text-sm mb-2">{test.title}</h4>
-                        <p className="text-xs text-gray-500 mb-4">{test.timeLimit} minutes</p>
-                        <Link to={`/test/${test.id}`} className="bg-[#15b86c] text-white text-xs font-bold py-2 px-4 rounded-lg hover:bg-[#12a15e] transition text-center">
-                          Start Test
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {sections.length > 0 ? (
               <div className="space-y-6">
-                {sections.map((section) => (
-                  <div key={section.id} id={section.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 scroll-mt-32">
-                    <h2 className="text-xl font-bold text-gray-900 mb-0">
-                      {section.title}
-                    </h2>
-                    {(section.type === 'table' || section.type === 'text_table') && section.description && (
-                      <div 
-                        className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed mb-4"
-                        dangerouslySetInnerHTML={{ __html: section.description }}
-                      />
-                    )}
-                    
-                    {(section.type === 'text' || section.type === 'text_table') && (
-                      <div 
-                        className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-tight
-                                   prose-headings:font-bold prose-headings:text-gray-900
-                                   prose-h3:text-lg prose-h3:mt-4 prose-h3:mb-1
-                                   prose-p:mb-2
-                                   prose-a:text-blue-600 prose-a:font-bold hover:prose-a:text-blue-700
-                                   prose-table:w-full prose-table:border-collapse prose-table:border prose-table:border-gray-300
-                                   prose-th:bg-gray-100 prose-th:border prose-th:border-gray-300 prose-th:p-3 prose-th:text-left prose-th:font-bold
-                                   prose-td:border prose-td:border-gray-300 prose-td:p-3
-                                   prose-ul:pl-0 prose-ul:mb-2
-                                   prose-li:mb-0.5"
-                        dangerouslySetInnerHTML={{ __html: section.content }}
-                      />
-                    )}
+                {sections.map((section, index) => (
+                  <React.Fragment key={section.id}>
+                    <div id={section.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 scroll-mt-32">
+                      <h2 className="text-xl font-bold text-gray-900 mb-0">
+                        {section.title}
+                      </h2>
+                      {(section.type === 'table' || section.type === 'text_table') && section.description && (
+                        <div 
+                          className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed mb-4"
+                          dangerouslySetInnerHTML={{ __html: section.description }}
+                        />
+                      )}
+                      
+                      {(section.type === 'text' || section.type === 'text_table') && (
+                        <div 
+                          className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-tight
+                                     prose-headings:font-bold prose-headings:text-gray-900
+                                     prose-h3:text-lg prose-h3:mt-4 prose-h3:mb-1
+                                     prose-p:mb-2
+                                     prose-a:text-blue-600 prose-a:font-bold hover:prose-a:text-blue-700
+                                     prose-table:w-full prose-table:border-collapse prose-table:border prose-table:border-gray-300
+                                     prose-th:bg-gray-100 prose-th:border prose-th:border-gray-300 prose-th:p-3 prose-th:text-left prose-th:font-bold
+                                     prose-td:border prose-td:border-gray-300 prose-td:p-3
+                                     prose-ul:pl-0 prose-ul:mb-2
+                                     prose-li:mb-0.5"
+                          dangerouslySetInnerHTML={{ __html: section.content }}
+                        />
+                      )}
 
-                    {section.type === 'faq' && (
-                      <FAQSection faqData={section.faqData} />
-                    )}
+                      {section.type === 'faq' && (
+                        <FAQSection faqData={section.faqData} />
+                      )}
 
-                    {section.type === 'icon_list' && (
-                      <div className="space-y-4">
-                    {section.content && (
-                      <div 
-                        className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed mb-1
-                                   prose-headings:font-bold prose-headings:text-gray-900
-                                   prose-p:mb-2
-                                   prose-a:text-blue-600 prose-a:font-bold hover:prose-a:text-blue-700"
-                        dangerouslySetInnerHTML={{ __html: section.content }}
-                      />
-                    )}
-                        <IconList items={section.items} iconName={section.iconName} iconColor={section.iconColor} />
-                      </div>
-                    )}
+                      {section.type === 'icon_list' && (
+                        <div className="space-y-4">
+                      {section.content && (
+                        <div 
+                          className="prose prose-sm md:prose-base max-w-none text-gray-700 leading-relaxed mb-1
+                                     prose-headings:font-bold prose-headings:text-gray-900
+                                     prose-p:mb-2
+                                     prose-a:text-blue-600 prose-a:font-bold hover:prose-a:text-blue-700"
+                          dangerouslySetInnerHTML={{ __html: section.content }}
+                        />
+                      )}
+                          <IconList items={section.items} iconName={section.iconName} iconColor={section.iconColor} />
+                        </div>
+                      )}
 
-                    {(section.type === 'table' || section.type === 'text_table') && section.tableData && (
-                      <div className="overflow-x-auto mt-4">
-                        <table className="min-w-full border-collapse border border-gray-200">
-                          <thead>
-                            <tr className="bg-gray-50">
-                              {section.tableData.headers.map((header: string, i: number) => (
-                                <th key={i} className="border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-700">{header}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {section.tableData.rows.map((row: string[], i: number) => (
-                              <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                                {row.map((cell: string, j: number) => (
-                                  <td 
-                                    key={j} 
-                                    className={`border border-gray-200 px-4 py-3 text-sm text-gray-700 ${section.tableData.boldCells?.[i]?.[j] ? 'font-bold' : ''} [&_a]:text-blue-600 [&_a]:font-bold hover:[&_a]:text-blue-700 [&_a]:inline-flex [&_a]:items-center [&_a]:gap-1`} 
-                                    dangerouslySetInnerHTML={{ __html: cell }}
-                                  ></td>
+                      {(section.type === 'table' || section.type === 'text_table') && section.tableData && (
+                        <div className="overflow-x-auto mt-4">
+                          <table className="min-w-full border-collapse border border-gray-200">
+                            <thead>
+                              <tr className="bg-gray-50">
+                                {section.tableData.headers.map((header: string, i: number) => (
+                                  <th key={i} className="border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-700">{header}</th>
                                 ))}
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {section.tableData.rows.map((row: string[], i: number) => (
+                                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                  {row.map((cell: string, j: number) => (
+                                    <td 
+                                      key={j} 
+                                      className={`border border-gray-200 px-4 py-3 text-sm text-gray-700 ${section.tableData.boldCells?.[i]?.[j] ? 'font-bold' : ''} [&_a]:text-blue-600 [&_a]:font-bold hover:[&_a]:text-blue-700 [&_a]:inline-flex [&_a]:items-center [&_a]:gap-1`} 
+                                      dangerouslySetInnerHTML={{ __html: cell }}
+                                    ></td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                    {/* Inject Mock Tests in the Middle (after 2 sections) */}
+                    {index === 1 && tests.length > 0 && (
+                      <div id="mock-tests" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32 overflow-hidden">
+                        <div className="flex justify-between items-end mb-6">
+                          <div>
+                            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                              <Trophy className="text-[#15b86c]" /> Practice Mock Tests
+                            </h2>
+                            <p className="text-gray-500 text-xs mt-1">Hand-picked assessments for your {exam.title} preparation.</p>
+                          </div>
+                          <Link to="/tests" className="text-[#15b86c] text-xs font-bold uppercase tracking-wider hover:underline">View All</Link>
+                        </div>
+                        
+                        <div className="flex gap-4 overflow-x-auto pb-6 -mb-2 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+                          {tests.map((test) => (
+                            <div key={test.id} className="min-w-[280px] md:min-w-[320px] snap-start bg-gray-50 p-6 rounded-2xl border border-gray-100 hover:border-[#15b86c] hover:shadow-lg transition-all flex flex-col justify-between group">
+                              <div>
+                                <div className="flex justify-between items-start mb-4">
+                                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-[#15b86c] group-hover:bg-[#15b86c] group-hover:text-white transition-all">
+                                    <FileText size={20} />
+                                  </div>
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-[#15b86c] bg-white px-2 py-1 rounded-md shadow-sm border border-green-50">
+                                    {test.timeLimit} Min
+                                  </span>
+                                </div>
+                                <h4 className="font-bold text-gray-900 text-base mb-2 group-hover:text-[#15b86c] transition-colors line-clamp-2 uppercase tracking-tight leading-tight min-h-[2.5rem]">
+                                  {test.title}
+                                </h4>
+                                <div className="flex items-center gap-4 text-gray-400 mb-6 text-[10px] font-bold uppercase tracking-widest">
+                                  <span className="flex items-center gap-1.5"><Clock size={12} /> {test.timeLimit}m</span>
+                                  <span className="flex items-center gap-1.5"><Trophy size={12} /> {test.questions?.length || 0} Qs</span>
+                                </div>
+                              </div>
+                              <Link 
+                                to={`/user/test/${test.id}`} 
+                                className="w-full bg-white border-2 border-gray-100 text-gray-800 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl hover:bg-[#15b86c] hover:text-white hover:border-[#15b86c] transition-all text-center flex items-center justify-center gap-2"
+                              >
+                                 Start Assessment <ChevronRight size={14} />
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Indicate more content with a subtle gradient on mobile */}
+                        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none md:hidden"></div>
                       </div>
                     )}
-                  </div>
+                  </React.Fragment>
                 ))}
+                {/* Fallback if sections < 2: show tests at the end */}
+                {sections.length < 2 && tests.length > 0 && (
+                  <div id="mock-tests" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32 overflow-hidden relative">
+                    <div className="flex justify-between items-end mb-6">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                          <Trophy className="text-[#15b86c]" /> Practice Mock Tests
+                        </h2>
+                        <p className="text-gray-500 text-xs mt-1">Hand-picked assessments for your {exam.title} preparation.</p>
+                      </div>
+                      <Link to="/tests" className="text-[#15b86c] text-xs font-bold uppercase tracking-wider hover:underline">View All</Link>
+                    </div>
+                    <div className="flex gap-4 overflow-x-auto pb-6 -mb-2 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+                      {tests.map((test) => (
+                        <div key={test.id} className="min-w-[280px] md:min-w-[320px] snap-start bg-gray-50 p-6 rounded-2xl border border-gray-100 hover:border-[#15b86c] hover:shadow-lg transition-all flex flex-col justify-between group">
+                          <div>
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-[#15b86c] group-hover:bg-[#15b86c] group-hover:text-white transition-all">
+                                <FileText size={20} />
+                              </div>
+                              <span className="text-[10px] font-black uppercase tracking-widest text-[#15b86c] bg-white px-2 py-1 rounded-md shadow-sm border border-green-50">
+                                {test.timeLimit} Min
+                              </span>
+                            </div>
+                            <h4 className="font-bold text-gray-900 text-base mb-2 group-hover:text-[#15b86c] transition-colors line-clamp-2 uppercase tracking-tight leading-tight min-h-[2.5rem]">
+                              {test.title}
+                            </h4>
+                            <div className="flex items-center gap-4 text-gray-400 mb-6 text-[10px] font-bold uppercase tracking-widest">
+                              <span className="flex items-center gap-1.5"><Clock size={12} /> {test.timeLimit}m</span>
+                              <span className="flex items-center gap-1.5"><Trophy size={12} /> {test.questions?.length || 0} Qs</span>
+                            </div>
+                          </div>
+                          <Link 
+                            to={`/user/test/${test.id}`} 
+                            className="w-full bg-white border-2 border-gray-100 text-gray-800 text-[10px] font-black uppercase tracking-widest py-3 rounded-xl hover:bg-[#15b86c] hover:text-white hover:border-[#15b86c] transition-all text-center flex items-center justify-center gap-2"
+                          >
+                             Start Assessment <ChevronRight size={14} />
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-6">

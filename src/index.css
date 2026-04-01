@@ -101,4 +101,16 @@
   .prose li::marker {
     display: none !important;
   }
+
+  .matrix-img {
+    display: inline-block;
+    vertical-align: middle;
+    padding: 0.5rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    max-width: 100%;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+    margin: 0.5rem 0;
+  }
 }

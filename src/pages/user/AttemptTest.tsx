@@ -2,14 +2,14 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../services/supabaseClient";
 import { useAuth } from "../../context/AuthContext";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
-  Share2, 
-  LayoutDashboard, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Share2,
+  LayoutDashboard,
   ShieldCheck,
   User,
   Calendar as CalendarIcon,
@@ -26,12 +26,20 @@ import { motion, AnimatePresence } from "motion/react";
 import MathText from "../../components/common/MathText";
 
 type QuestionStatus = 'NOT_VISITED' | 'NOT_ANSWERED' | 'ANSWERED' | 'MARKED' | 'ANSWERED_MARKED';
+const shuffleArray = (array: any[]) => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
 
 export default function AttemptTest() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+
   const [test, setTest] = useState<any>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [markedQuestions, setMarkedQuestions] = useState<Set<number>>(new Set());
@@ -50,10 +58,10 @@ export default function AttemptTest() {
 
   const dynamicSections = useMemo(() => {
     if (!test || !test.questions) return [];
-    
+
     const groups: Record<string, any> = {};
     const sectionOrder = test.sections || ["General Section"];
-    
+
     // Initialize groups with predefined sections to preserve order
     sectionOrder.forEach((s: string) => {
       groups[s] = { name: s, count: 0, marks: 0, id: s };
@@ -67,7 +75,7 @@ export default function AttemptTest() {
       groups[sectionName].count += 1;
       groups[sectionName].marks += (q.marks || 1);
     });
-    
+
     // Filter out sections with no questions if desired, or keep them all.
     // Let's keep them all if they were predefined, or only those with questions.
     // Usually, if an admin defines a section, they expect it to be there.
@@ -76,12 +84,53 @@ export default function AttemptTest() {
 
   useEffect(() => {
     const fetchTest = async () => {
+      // PARAM PROTECTION: Catch 'undefined' UUID string from bad params
+      if (!id || id === "undefined") {
+        console.warn("AttemptTest: Invalid Test ID detected. Redirecting...");
+        navigate("/user/tests");
+        return;
+      }
+
       const { data, error } = await supabase.from("tests").select("*").eq("id", id).single();
       if (data) {
-        setTest(data);
+        const sectionOrder = data.sections || ["General Section"];
+        let processedQuestions: any[] = [];
+        const questionsBySection: Record<string, any[]> = {};
+
+        // 1. Group questions by their section name
+        (data.questions || []).forEach((q: any) => {
+          const sName = q.section || "General Section";
+          if (!questionsBySection[sName]) questionsBySection[sName] = [];
+          questionsBySection[sName].push(q);
+        });
+
+        // 2. Process sections in the order they were defined by the admin
+        sectionOrder.forEach((sName: string) => {
+          if (questionsBySection[sName]) {
+            // Shuffle only the questions within this specific section
+            const shuffled = shuffleArray(questionsBySection[sName]).map((q: any) => ({
+              ...q,
+              options: shuffleArray(q.options || [])
+            }));
+            processedQuestions = [...processedQuestions, ...shuffled];
+            delete questionsBySection[sName]; // Mark as processed
+          }
+        });
+
+        // 3. Fallback: Add any remaining questions from sections not in the main order list
+        Object.keys(questionsBySection).forEach((sName: string) => {
+          const shuffled = shuffleArray(questionsBySection[sName]).map((q: any) => ({
+            ...q,
+            options: shuffleArray(q.options || [])
+          }));
+          processedQuestions = [...processedQuestions, ...shuffled];
+        });
+
+        setTest({ ...data, questions: processedQuestions });
         setTimeLeft(data.timeLimit * 60);
-        if (data.questions && data.questions.length > 0) {
-          setActiveSection(data.questions[0].section || "General Section");
+
+        if (processedQuestions.length > 0) {
+          setActiveSection(processedQuestions[0].section || "General Section");
         }
       }
       if (error) console.error("Failed to fetch test", error);
@@ -91,7 +140,7 @@ export default function AttemptTest() {
 
   useEffect(() => {
     if (timeLeft === null || result) return;
-    
+
     if (timeLeft <= 0) {
       handleSubmit();
       return;
@@ -154,16 +203,16 @@ export default function AttemptTest() {
   const handleSubmit = async () => {
     const endTime = Date.now();
     const timeTakenSeconds = Math.floor((endTime - startTime) / 1000);
-    
+
     let correct = 0;
     let wrong = 0;
     let totalMarks = 0;
-    
+
     test.questions.forEach((q: any, index: number) => {
       const qId = q.id || `q-${index}`;
       const qMarks = q.marks || 1;
       totalMarks += qMarks;
-      
+
       if (answers[qId]) {
         if (answers[qId] === q.correctAnswer) {
           correct += qMarks;
@@ -176,10 +225,10 @@ export default function AttemptTest() {
     const totalQuestions = test.questions.length;
     const accuracy = totalQuestions > 0 ? Math.round((correct / totalMarks) * 100) : 0;
 
-    const resultData = { 
+    const resultData = {
       user_id: user?.id,
       test_id: id,
-      score: correct, 
+      score: correct,
       correct,
       wrong,
       total_items: totalQuestions,
@@ -193,7 +242,7 @@ export default function AttemptTest() {
     const { error: saveError } = await supabase.from("test_results").insert([resultData]);
     if (saveError) console.error("Error saving test result:", saveError);
 
-    setResult({ 
+    setResult({
       ...resultData,
       totalItems: totalQuestions,
       timeTaken: timeTakenSeconds,
@@ -276,7 +325,7 @@ export default function AttemptTest() {
               <div className="w-2 h-2 bg-black rounded-full"></div>
               Target Exam: {test.title}
             </h2>
-            
+
             <div className="overflow-hidden border border-gray-200 rounded-lg mb-6">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -308,7 +357,7 @@ export default function AttemptTest() {
             {test.instructions ? (
               <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 mb-8">
                 <h3 className="text-sm font-black text-blue-600 uppercase tracking-widest mb-4">Special Instructions</h3>
-                <div 
+                <div
                   className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
                   dangerouslySetInnerHTML={{ __html: test.instructions }}
                 />
@@ -366,11 +415,11 @@ export default function AttemptTest() {
 
           <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-6 mb-10">
             <label className="flex gap-4 cursor-pointer">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               <span className="text-[13px] leading-relaxed text-gray-700">
                 I have read and understood the instructions. All computer hardware allotted to me are in proper working condition. I declare that I am not in possession of / not wearing / not carrying any prohibited gadget like mobile phone, bluetooth devices etc. /any prohibited material with me into the Examination Hall. I agree that in case of not adhering to the instructions, I shall be liable to be debarred from this Test and/or disciplinary action, which may include ban from future Tests / Examinations.
@@ -380,21 +429,20 @@ export default function AttemptTest() {
         </main>
 
         <footer className="bg-gray-50 border-t border-gray-200 p-4 flex justify-between items-center flex-shrink-0">
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 px-6 py-2 rounded border border-gray-300 text-gray-600 font-medium hover:bg-gray-100 transition-all"
           >
             <ChevronLeft size={18} />
             Previous
           </button>
-          <button 
+          <button
             disabled={!agreedToTerms}
             onClick={() => setIsStarted(true)}
-            className={`flex items-center gap-2 px-8 py-2.5 rounded font-bold transition-all shadow-md ${
-              agreedToTerms 
-                ? 'bg-[#87cedb] text-white hover:bg-[#76bdca]' 
+            className={`flex items-center gap-2 px-8 py-2.5 rounded font-bold transition-all shadow-md ${agreedToTerms
+                ? 'bg-[#87cedb] text-white hover:bg-[#76bdca]'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
+              }`}
           >
             I am ready to begin
             <ChevronRight size={18} />
@@ -414,7 +462,7 @@ export default function AttemptTest() {
               SECURE ASSESSMENT RECORD
             </div>
             <h1 className="text-3xl md:text-5xl font-black mb-6 md:mb-8 tracking-tight leading-tight text-gray-900">KEEP PUSHING HARDER!</h1>
-            
+
             <div className="flex justify-center gap-4 md:gap-8 text-gray-500 text-[10px] md:text-sm mb-8 md:mb-12">
               <div className="flex items-center gap-1.5 md:gap-2">
                 <User size={14} md:size={16} />
@@ -457,7 +505,7 @@ export default function AttemptTest() {
                 <Share2 size={18} md:size={20} />
                 Share Results
               </button>
-              <button 
+              <button
                 onClick={() => navigate("/user")}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-900 px-8 md:px-12 py-3 md:py-4 rounded-xl font-black tracking-widest uppercase text-[10px] md:text-xs flex items-center justify-center gap-2 md:gap-3 transition-all border border-gray-200"
               >
@@ -477,7 +525,7 @@ export default function AttemptTest() {
                   const qId = q.id || `q-${index}`;
                   const userAnswer = answers[qId];
                   const isCorrect = userAnswer === q.correctAnswer;
-                  
+
                   return (
                     <div key={index} className="bg-white border border-gray-100 rounded-xl md:rounded-2xl p-4 md:p-6 text-left shadow-sm">
                       <div className="flex justify-between items-start mb-4">
@@ -498,11 +546,11 @@ export default function AttemptTest() {
                           </span>
                         )}
                       </div>
-                      
+
                       <p className="text-base md:text-lg font-bold mb-4 leading-tight text-gray-900">
                         <MathText text={q.questionText} />
                       </p>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="bg-gray-50 rounded-xl p-3 md:p-4 border border-gray-100">
                           <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Your Answer</p>
@@ -555,13 +603,13 @@ export default function AttemptTest() {
         </div>
 
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={() => setShowQuestionPaper(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-[10px] font-bold uppercase flex items-center gap-1"
           >
             <FileText size={12} /> Question Paper
           </button>
-          <button 
+          <button
             onClick={() => setShowInstructionsModal(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-[10px] font-bold uppercase flex items-center gap-1"
           >
@@ -579,14 +627,13 @@ export default function AttemptTest() {
           {/* Section Tabs */}
           <div className="bg-[#e8f0fe] border-b border-gray-200 px-2 py-1 flex gap-1 overflow-x-auto shrink-0">
             {dynamicSections.map((s: any) => (
-              <button 
+              <button
                 key={s.id}
                 onClick={() => handleSectionClick(s.id)}
-                className={`px-4 py-1 rounded-t text-[10px] font-bold whitespace-nowrap transition-all border-t border-l border-r ${
-                  activeSection === s.id 
-                    ? 'bg-[#008bb1] text-white border-[#008bb1]' 
+                className={`px-4 py-1 rounded-t text-[10px] font-bold whitespace-nowrap transition-all border-t border-l border-r ${activeSection === s.id
+                    ? 'bg-[#008bb1] text-white border-[#008bb1]'
                     : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 {s.name}
               </button>
@@ -621,10 +668,10 @@ export default function AttemptTest() {
                   return (
                     <label
                       key={i}
-                      className={`flex items-center gap-4 p-3 rounded-lg border transition-all cursor-pointer group ${
+                      className={`flex items-center gap-4 p-3 rounded-xl border transition-all cursor-pointer group ${
                         isSelected 
-                          ? 'border-blue-300 bg-blue-50/50' 
-                          : 'border-transparent hover:bg-gray-50'
+                          ? 'border-blue-200 bg-blue-50/50 shadow-sm shadow-blue-100/50' 
+                          : 'border-gray-100/50 hover:bg-gray-50'
                       }`}
                     >
                       <input 
@@ -634,8 +681,14 @@ export default function AttemptTest() {
                         onChange={() => handleOptionChange(currentQId, opt)}
                         className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                       />
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-400 uppercase">{String.fromCharCode(65 + i)}</span>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-lg border flex items-center justify-center text-[10px] font-black transition-all ${
+                          isSelected 
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                            : 'bg-white border-gray-200 text-gray-400 group-hover:border-blue-400 group-hover:text-blue-500'
+                        }`}>
+                          {String.fromCharCode(65 + i)}
+                        </div>
                         <span className={`text-sm font-bold ${isSelected ? 'text-gray-900' : 'text-gray-700'}`}>
                           <MathText text={opt} />
                         </span>
@@ -671,7 +724,7 @@ export default function AttemptTest() {
               >
                 Save & Next
               </button>
-              <button 
+              <button
                 onClick={() => setShowSubmitModal(true)}
                 className="bg-[#008bb1] hover:bg-[#007aa0] text-white px-8 py-1.5 rounded text-[10px] font-bold transition-all uppercase shadow-sm"
               >
@@ -704,7 +757,7 @@ export default function AttemptTest() {
               { label: 'Ans & Marked', count: statusCounts.ANSWERED_MARKED, color: 'bg-[#6a1b9a] rounded-full relative after:content-[""] after:absolute after:bottom-0 after:right-0 after:w-1.5 after:h-1.5 after:bg-[#2e7d32] after:rounded-full after:border after:border-white', shape: 'ANSWERED_MARKED' }
             ].map((s, i) => (
               <div key={i} className="flex items-center gap-2">
-                <div 
+                <div
                   className={`w-4 h-4 border ${s.color}`}
                   style={getStatusShape(s.shape as QuestionStatus)}
                 ></div>
@@ -724,10 +777,10 @@ export default function AttemptTest() {
             <div className="grid grid-cols-4 gap-2">
               {test.questions.map((q: any, i: number) => {
                 if ((q.section || "General Section") !== activeSection) return null;
-                
+
                 const status = getQuestionStatus(i);
                 const isCurrent = currentQuestionIndex === i;
-                
+
                 return (
                   <button
                     key={i}
@@ -752,14 +805,14 @@ export default function AttemptTest() {
       <AnimatePresence>
         {showSubmitModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowSubmitModal(false)}
               className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
             ></motion.div>
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -771,7 +824,7 @@ export default function AttemptTest() {
                 </div>
                 <h3 className="text-2xl font-black tracking-tight">Submit Attempt?</h3>
               </div>
-              
+
               <div className="bg-[#fff1f2] p-6 flex flex-col items-center text-center gap-2">
                 <div className="flex items-center gap-2 text-[#e11d48]">
                   <AlertTriangle size={16} />
@@ -798,13 +851,13 @@ export default function AttemptTest() {
                 </div>
 
                 <div className="flex gap-3">
-                  <button 
+                  <button
                     onClick={() => setShowSubmitModal(false)}
                     className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 py-4 rounded-xl font-black tracking-widest uppercase text-xs transition-all"
                   >
                     Back
                   </button>
-                  <button 
+                  <button
                     onClick={handleSubmit}
                     className="flex-1 bg-[#00a86b] hover:bg-[#008f5b] text-white py-4 rounded-xl font-black tracking-widest uppercase text-xs transition-all shadow-lg shadow-green-600/20"
                   >
@@ -818,14 +871,14 @@ export default function AttemptTest() {
 
         {showQuestionPaper && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowQuestionPaper(false)}
               className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
             ></motion.div>
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -856,9 +909,9 @@ export default function AttemptTest() {
                     <div className="ml-9 grid grid-cols-1 md:grid-cols-2 gap-3">
                       {q.options.map((opt: string, idx: number) => (
                         <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50/50">
-                          <span className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-[10px] font-bold text-gray-500 bg-white">
+                          <div className="w-5 h-5 rounded-md border border-gray-200 bg-white flex items-center justify-center text-[8px] font-black text-gray-400 shrink-0">
                             {String.fromCharCode(65 + idx)}
-                          </span>
+                          </div>
                           <span className="text-xs text-gray-700">
                             <MathText text={opt} />
                           </span>
@@ -874,14 +927,14 @@ export default function AttemptTest() {
 
         {showInstructionsModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowInstructionsModal(false)}
               className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
             ></motion.div>
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -895,11 +948,11 @@ export default function AttemptTest() {
               </div>
               <div className="flex-grow overflow-y-auto p-8">
                 <h4 className="text-blue-700 font-black uppercase tracking-widest text-xs mb-4 border-b border-blue-100 pb-2">Exam Instructions</h4>
-                <div 
+                <div
                   className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
                   dangerouslySetInnerHTML={{ __html: test.instructions || "No special instructions provided for this exam." }}
                 />
-                
+
                 <div className="mt-8 pt-8 border-t border-gray-100">
                   <h4 className="text-gray-900 font-black uppercase tracking-widest text-xs mb-4">General Information</h4>
                   <ul className="space-y-3 text-[13px] text-gray-600">

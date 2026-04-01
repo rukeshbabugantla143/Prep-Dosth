@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Plus, X, PlayCircle, Copy, Link as LinkIcon, ArrowUp, ArrowDown, Bold, GripVertical, Search, ArrowLeft, BookOpen, Calendar, Users } from "lucide-react";
+import { Edit, Trash2, Plus, X, PlayCircle, Copy, Link as LinkIcon, ArrowUp, ArrowDown, Bold, GripVertical, Search, ArrowLeft, BookOpen, Calendar, Users, Trophy, Loader2 } from "lucide-react";
 import JoditEditor from "jodit-react";
 import ConfirmationModal from "../../components/ConfirmationModal";
 import ImageUpload from "../../components/common/ImageUpload";
@@ -265,6 +265,8 @@ export default function ManageExams() {
   const [categories, setCategories] = useState<string[]>(['SSC Exams', 'Banking Exams', 'Teaching Exams', 'Civil Services', 'Railway Exams']);
   const [newCategory, setNewCategory] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [allTests, setAllTests] = useState<any[]>([]);
+  const [selectedTestIds, setSelectedTestIds] = useState<string[]>([]);
 
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -370,8 +372,15 @@ export default function ManageExams() {
     if (error) console.error("Error fetching exams:", error);
   };
 
+  const fetchTests = async () => {
+    const { data, error } = await supabase.from("tests").select("id, title").order("created_at", { ascending: false });
+    if (data) setAllTests(data);
+    if (error) console.error("Error fetching tests:", error);
+  };
+
   useEffect(() => {
     fetchExams();
+    fetchTests();
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -403,7 +412,8 @@ export default function ManageExams() {
       official_links: officialLinks,
       notification_links: notificationLinks,
       youtube_videos: youtubeVideos,
-      logo_url: logoUrl
+      logo_url: logoUrl,
+      featured_test_ids: selectedTestIds
     });
     const examToSave = { ...currentExam, description: serializedDescription };
 
@@ -424,6 +434,7 @@ export default function ManageExams() {
     setCurrentExam({});
     setSections([]);
     setLogoUrl('');
+    setSelectedTestIds([]);
     fetchExams();
   };
 
@@ -438,11 +449,13 @@ export default function ManageExams() {
           setSections(parsed);
           setStatus('Confirmed');
           setImportantDates([]);
+          setSelectedTestIds([]);
         } else {
           setSections(parsed.sections || []);
           setStatus(parsed.status || 'Confirmed');
           setImportantDates(parsed.important_dates || []);
           setLogoUrl(parsed.logo_url || '');
+          setSelectedTestIds(parsed.featured_test_ids || []);
           
           // Handle migration for official links
           if (parsed.official_links) {
@@ -508,11 +521,13 @@ export default function ManageExams() {
           setSections(parsed);
           setStatus('Confirmed');
           setImportantDates([]);
+          setSelectedTestIds([]);
         } else {
           setSections(parsed.sections || []);
           setStatus(parsed.status || 'Confirmed');
           setImportantDates(parsed.important_dates || []);
           setLogoUrl(parsed.logo_url || '');
+          setSelectedTestIds(parsed.featured_test_ids || []);
           
           // Handle migration for official links
           if (parsed.official_links) {
@@ -591,6 +606,7 @@ export default function ManageExams() {
     setOfficialLinks([{ label: 'Official Website', url: '', color: 'blue' }]);
     setNotificationLinks([{ label: 'Notification PDF', url: '', color: 'red' }]);
     setYoutubeVideos([]);
+    setSelectedTestIds([]);
     setIsEditing(true);
   };
 
@@ -1048,6 +1064,41 @@ export default function ManageExams() {
                   <p className="text-sm text-red-400 italic">No videos added yet.</p>
                 )}
               </div>
+            </div>
+
+            <div className="md:col-span-2 space-y-4 bg-purple-50 p-6 rounded-xl border border-purple-100">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-purple-800 flex items-center gap-2">
+                  <Trophy size={20} /> Linked Mock Tests
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-2">
+                {allTests.map(test => (
+                  <label key={test.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-purple-100 hover:border-purple-300 transition-all cursor-pointer shadow-sm group">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedTestIds.includes(test.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedTestIds([...selectedTestIds, test.id]);
+                        } else {
+                          setSelectedTestIds(selectedTestIds.filter(id => id !== test.id));
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-gray-800 uppercase tracking-tight truncate group-hover:text-purple-600 transition-colors">{test.title}</p>
+                    </div>
+                  </label>
+                ))}
+                {allTests.length === 0 && (
+                  <p className="text-sm text-purple-400 italic col-span-full">No mock tests available to link.</p>
+                )}
+              </div>
+              <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mt-2 bg-white/50 p-2 rounded-lg inline-block border border-purple-100">
+                Selected: {selectedTestIds.length} Tests
+              </p>
             </div>
 
             <div className="md:col-span-2 space-y-6 mt-4">

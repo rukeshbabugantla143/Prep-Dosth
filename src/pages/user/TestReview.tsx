@@ -20,7 +20,12 @@ export default function TestReview() {
 
   useEffect(() => {
     const fetchResult = async () => {
-      if (!resultId) return;
+      // PARAM PROTECTION: Catch 'undefined' UUID string from bad params
+      if (!resultId || resultId === "undefined") {
+        console.warn("TestReview: Invalid Result ID detected. Redirecting...");
+        navigate("/user/results");
+        return;
+      }
       
       const { data, error } = await supabase
         .from("test_results")
@@ -148,9 +153,20 @@ export default function TestReview() {
                     return (
                       <div 
                         key={oIdx}
-                        className={`p-4 rounded-2xl border-2 ${borderColor} ${bgColor} ${textColor} font-bold text-sm flex items-center justify-between`}
+                        className={`p-4 rounded-2xl border-2 ${borderColor} ${bgColor} ${textColor} font-bold text-sm flex items-center gap-4 transition-all`}
                       >
-                        <MathText text={option} />
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
+                          isCorrectOption 
+                            ? 'bg-green-600 text-white shadow-lg shadow-green-200' 
+                            : isSelected && !isCorrect 
+                              ? 'bg-red-600 text-white shadow-lg shadow-red-200'
+                              : 'bg-gray-100 text-gray-400 border border-gray-200'
+                        }`}>
+                          {String.fromCharCode(65 + oIdx)}
+                        </div>
+                        <div className="flex-grow">
+                          <MathText text={option} />
+                        </div>
                         {isCorrectOption && <CheckCircle2 size={16} className="text-green-600" />}
                         {isSelected && !isCorrect && <XCircle size={16} className="text-red-600" />}
                       </div>
