@@ -385,69 +385,69 @@ export default function ExamDetails() {
                               {/* Top Blue Bar */}
                               <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-cyan-400 to-blue-600"></div>
                               
-                              <div className="p-6 flex-grow">
+                              <div className="p-5 flex-grow">
                                 {/* Header: Folder + Join Now */}
-                                <div className="flex justify-between items-start mb-6">
-                                  <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
-                                    <Folder className="text-white" size={28} />
+                                <div className="flex justify-between items-start mb-4">
+                                  <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
+                                    <Folder className="text-white" size={24} />
                                   </div>
-                                  <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 via-orange-400 to-orange-500 text-white px-4 py-2 rounded-full shadow-md transform hover:scale-105 transition-transform cursor-pointer">
-                                    <Users size={14} className="fill-white" />
-                                    <span className="text-[10px] font-black uppercase tracking-tight">Join Now</span>
+                                  <div className="flex items-center gap-1 bg-gradient-to-r from-amber-400 via-orange-400 to-orange-500 text-white px-3 py-1.5 rounded-full shadow-md transform hover:scale-105 transition-transform cursor-pointer">
+                                    <Users size={12} className="fill-white" />
+                                    <span className="text-[9px] font-black uppercase tracking-tight">Join Now</span>
                                   </div>
                                 </div>
                                 
                                 {/* Title: Use the actual test title */}
-                                <h2 className="text-[1.3rem] font-black text-gray-900 leading-[1.2] mb-6 uppercase tracking-tight line-clamp-2">
+                                <h2 className="text-[1.2rem] font-black text-gray-900 leading-[1.2] mb-4 uppercase tracking-tight line-clamp-2">
                                   {test.title}
                                 </h2>
 
                                 {/* Stats Summary Section */}
-                                <div className="flex items-center justify-between py-4 border-t border-gray-50">
-                                  <span className="text-[11px] font-bold text-gray-900 uppercase">1 Total Test</span>
-                                  <span className={`text-[11px] font-bold uppercase ${test.is_free ? 'text-green-600' : 'text-orange-500'}`}>
+                                <div className="flex items-center justify-between py-3 border-t border-gray-50">
+                                  <span className="text-[10px] font-bold text-gray-900 uppercase">1 Total Test</span>
+                                  <span className={`text-[10px] font-bold uppercase ${test.is_free ? 'text-green-600' : 'text-orange-500'}`}>
                                     {test.is_free ? 'Free Test' : 'Premium Test'}
                                   </span>
                                 </div>
 
                                 {/* Languages */}
-                                <div className="py-4 border-t border-gray-50 flex items-center gap-2">
-                                  <Globe size={14} className="text-blue-400" />
-                                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">English, Telugu, Hindi</span>
+                                <div className="py-3 border-t border-gray-50 flex items-center gap-2">
+                                  <Globe size={12} className="text-blue-400" />
+                                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">English, Telugu, Hindi</span>
                                 </div>
 
                                 {/* List Sections: Highlight the specific type of this test */}
-                                <div className="py-2 space-y-4">
-                                  <div className={`flex items-center gap-4 ${test.is_live ? 'opacity-100' : 'opacity-40'}`}>
-                                    <div className="w-8 h-8 rounded-xl bg-pink-50 flex items-center justify-center">
-                                      <Zap size={14} className={`text-pink-600 ${test.is_live ? 'fill-pink-600' : ''}`} />
+                                <div className="py-1 space-y-2.5">
+                                  <div className={`flex items-center gap-3 ${test.is_live ? 'opacity-100' : 'opacity-40'}`}>
+                                    <div className="w-7 h-7 rounded-xl bg-pink-50 flex items-center justify-center">
+                                      <Zap size={12} className={`text-pink-600 ${test.is_live ? 'fill-pink-600' : ''}`} />
                                     </div>
-                                    <span className="text-[11px] font-black text-gray-600 uppercase tracking-tight">
+                                    <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
                                       {test.is_live ? 'Live Test' : '0 Live Tests'}
                                     </span>
                                   </div>
                                   
-                                  <div className={`flex items-center gap-4 ${test.test_type === "Chapter Test" ? 'opacity-100' : 'opacity-40'}`}>
-                                    <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center">
-                                      <Layers size={14} className="text-orange-600" />
+                                  <div className={`flex items-center gap-3 ${test.test_type === "Chapter Test" ? 'opacity-100' : 'opacity-40'}`}>
+                                    <div className="w-7 h-7 rounded-xl bg-orange-50 flex items-center justify-center">
+                                      <Layers size={12} className="text-orange-600" />
                                     </div>
-                                    <span className="text-[11px] font-black text-gray-600 uppercase tracking-tight">
+                                    <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
                                       {test.test_type === "Chapter Test" ? 'Chapter Test' : '0 Chapter Tests'}
                                     </span>
                                   </div>
                                   
-                                  <div className={`flex items-center gap-4 ${test.test_type === "CA Booster" ? 'opacity-100' : 'opacity-40'}`}>
-                                    <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
-                                      <FileText size={14} className="text-blue-600" />
+                                  <div className={`flex items-center gap-3 ${test.test_type === "CA Booster" ? 'opacity-100' : 'opacity-40'}`}>
+                                    <div className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center">
+                                      <FileText size={12} className="text-blue-600" />
                                     </div>
-                                    <span className="text-[11px] font-black text-gray-600 uppercase tracking-tight">
+                                    <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
                                       {test.test_type === "CA Booster" ? 'CA Booster' : '0 CA Booster'}
                                     </span>
                                   </div>
 
-                                  <div className="flex items-center gap-4 pt-2">
-                                    <div className="w-8"></div> {/* Spacer */}
-                                    <span className="text-[12px] font-black text-green-500 uppercase tracking-widest">+ Real-time Content</span>
+                                  <div className="flex items-center gap-3 pt-1">
+                                    <div className="w-7"></div> {/* Small Spacer */}
+                                    <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">+ Real-time Content</span>
                                   </div>
                                 </div>
                               </div>
@@ -455,7 +455,7 @@ export default function ExamDetails() {
                               {/* Footer Action Button */}
                               <Link 
                                 to={`/user/test/${test.id}`}
-                                className="w-full bg-[#0ea5e9] hover:bg-[#0284c7] text-white py-5 font-black uppercase text-[12px] tracking-[0.2em] transition-all duration-300 text-center block mt-auto"
+                                className="w-full bg-[#0ea5e9] hover:bg-[#0284c7] text-white py-3.5 font-black uppercase text-[11px] tracking-[0.2em] transition-all duration-300 text-center block mt-auto"
                               >
                                 View Test
                               </Link>
@@ -488,69 +488,69 @@ export default function ExamDetails() {
                           {/* Top Blue Bar */}
                           <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-cyan-400 to-blue-600"></div>
                           
-                          <div className="p-6 flex-grow">
+                          <div className="p-5 flex-grow">
                             {/* Header: Folder + Join Now */}
-                            <div className="flex justify-between items-start mb-6">
-                              <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
-                                <Folder className="text-white" size={28} />
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
+                                <Folder className="text-white" size={24} />
                               </div>
-                              <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 via-orange-400 to-orange-500 text-white px-4 py-2 rounded-full shadow-md transform hover:scale-105 transition-transform cursor-pointer">
-                                <Users size={14} className="fill-white" />
-                                <span className="text-[10px] font-black uppercase tracking-tight">Join Now</span>
+                              <div className="flex items-center gap-1 bg-gradient-to-r from-amber-400 via-orange-400 to-orange-500 text-white px-3 py-1.5 rounded-full shadow-md transform hover:scale-105 transition-transform cursor-pointer">
+                                <Users size={12} className="fill-white" />
+                                <span className="text-[9px] font-black uppercase tracking-tight">Join Now</span>
                               </div>
                             </div>
                             
                             {/* Title: Use the actual test title */}
-                            <h2 className="text-[1.3rem] font-black text-gray-900 leading-[1.2] mb-6 uppercase tracking-tight line-clamp-2">
+                            <h2 className="text-[1.2rem] font-black text-gray-900 leading-[1.2] mb-4 uppercase tracking-tight line-clamp-2">
                               {test.title}
                             </h2>
 
                             {/* Stats Summary Section */}
-                            <div className="flex items-center justify-between py-4 border-t border-gray-50">
-                              <span className="text-[11px] font-bold text-gray-900 uppercase">1 Total Test</span>
-                              <span className={`text-[11px] font-bold uppercase ${test.is_free ? 'text-green-600' : 'text-orange-500'}`}>
+                            <div className="flex items-center justify-between py-3 border-t border-gray-50">
+                              <span className="text-[10px] font-bold text-gray-900 uppercase">1 Total Test</span>
+                              <span className={`text-[10px] font-bold uppercase ${test.is_free ? 'text-green-600' : 'text-orange-500'}`}>
                                 {test.is_free ? 'Free Test' : 'Premium Test'}
                               </span>
                             </div>
 
                             {/* Languages */}
-                            <div className="py-4 border-t border-gray-50 flex items-center gap-2">
-                              <Globe size={14} className="text-blue-400" />
-                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">English, Telugu, Hindi</span>
+                            <div className="py-3 border-t border-gray-50 flex items-center gap-2">
+                              <Globe size={12} className="text-blue-400" />
+                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">English, Telugu, Hindi</span>
                             </div>
 
                             {/* List Sections: Highlight original type */}
-                            <div className="py-2 space-y-4">
-                              <div className={`flex items-center gap-4 ${test.is_live ? 'opacity-100' : 'opacity-40'}`}>
-                                <div className="w-8 h-8 rounded-xl bg-pink-50 flex items-center justify-center">
-                                  <Zap size={14} className={`text-pink-600 ${test.is_live ? 'fill-pink-600' : ''}`} />
+                            <div className="py-1 space-y-2.5">
+                              <div className={`flex items-center gap-3 ${test.is_live ? 'opacity-100' : 'opacity-40'}`}>
+                                <div className="w-7 h-7 rounded-xl bg-pink-50 flex items-center justify-center">
+                                  <Zap size={12} className={`text-pink-600 ${test.is_live ? 'fill-pink-600' : ''}`} />
                                 </div>
-                                <span className="text-[11px] font-black text-gray-600 uppercase tracking-tight">
+                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
                                   {test.is_live ? 'Live Test' : '0 Live Tests'}
                                 </span>
                               </div>
                               
-                              <div className={`flex items-center gap-4 ${test.test_type === "Chapter Test" ? 'opacity-100' : 'opacity-40'}`}>
-                                <div className="w-8 h-8 rounded-xl bg-orange-50 flex items-center justify-center">
-                                  <Layers size={14} className="text-orange-600" />
+                              <div className={`flex items-center gap-3 ${test.test_type === "Chapter Test" ? 'opacity-100' : 'opacity-40'}`}>
+                                <div className="w-7 h-7 rounded-xl bg-orange-50 flex items-center justify-center">
+                                  <Layers size={12} className="text-orange-600" />
                                 </div>
-                                <span className="text-[11px] font-black text-gray-600 uppercase tracking-tight">
+                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
                                   {test.test_type === "Chapter Test" ? 'Chapter Test' : '0 Chapter Tests'}
                                 </span>
                               </div>
                               
-                              <div className={`flex items-center gap-4 ${test.test_type === "CA Booster" ? 'opacity-100' : 'opacity-40'}`}>
-                                <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
-                                  <FileText size={14} className="text-blue-600" />
+                              <div className={`flex items-center gap-3 ${test.test_type === "CA Booster" ? 'opacity-100' : 'opacity-40'}`}>
+                                <div className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center">
+                                  <FileText size={12} className="text-blue-600" />
                                 </div>
-                                <span className="text-[11px] font-black text-gray-600 uppercase tracking-tight">
+                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
                                   {test.test_type === "CA Booster" ? 'CA Booster' : '0 CA Booster'}
                                 </span>
                               </div>
 
-                              <div className="flex items-center gap-4 pt-2">
-                                <div className="w-8"></div> {/* Spacer */}
-                                <span className="text-[12px] font-black text-green-500 uppercase tracking-widest">+ Real-time Content</span>
+                              <div className="flex items-center gap-3 pt-1">
+                                <div className="w-7"></div> {/* Small Spacer */}
+                                <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">+ Real-time Content</span>
                               </div>
                             </div>
                           </div>
@@ -558,7 +558,7 @@ export default function ExamDetails() {
                           {/* Footer Action Button */}
                           <Link 
                             to={`/user/test/${test.id}`}
-                            className="w-full bg-[#0ea5e9] hover:bg-[#0284c7] text-white py-5 font-black uppercase text-[12px] tracking-[0.2em] transition-all duration-300 text-center block mt-auto"
+                            className="w-full bg-[#0ea5e9] hover:bg-[#0284c7] text-white py-3.5 font-black uppercase text-[11px] tracking-[0.2em] transition-all duration-300 text-center block mt-auto"
                           >
                             View Test
                           </Link>
