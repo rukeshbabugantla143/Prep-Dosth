@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Save, X, Briefcase, GraduationCap, Bell } from "lucide-react";
+import { Edit, Trash2, Save, X, Briefcase, GraduationCap, Bell, Target } from "lucide-react";
 import ConfirmationModal from "../../components/ConfirmationModal";
 
-type CategorySource = 'jobs' | 'exams' | 'notifications';
+type CategorySource = 'jobs' | 'exams' | 'notifications' | 'tests';
 
 interface CategoryItem {
   name: string;
@@ -52,10 +52,18 @@ export default function ManageCategories() {
         if (n.type) notifCats[n.type] = (notifCats[n.type] || 0) + 1;
       });
 
+      // Fetch from Tests
+      const { data: testsData } = await supabase.from("tests").select("category");
+      const testCats: { [key: string]: number } = {};
+      testsData?.forEach(t => {
+        if (t.category) testCats[t.category] = (testCats[t.category] || 0) + 1;
+      });
+
       const combined: CategoryItem[] = [
         ...Object.keys(jobCats).map(name => ({ name, count: jobCats[name], source: 'jobs' as CategorySource })),
         ...Object.keys(examCats).map(name => ({ name, count: examCats[name], source: 'exams' as CategorySource })),
-        ...Object.keys(notifCats).map(name => ({ name, count: notifCats[name], source: 'notifications' as CategorySource }))
+        ...Object.keys(notifCats).map(name => ({ name, count: notifCats[name], source: 'notifications' as CategorySource })),
+        ...Object.keys(testCats).map(name => ({ name, count: testCats[name], source: 'tests' as CategorySource }))
       ];
 
       setCategories(combined);
@@ -74,8 +82,8 @@ export default function ManageCategories() {
     if (!editingCategory || !editingCategory.newName.trim()) return;
 
     const { oldName, newName, source } = editingCategory;
-    const table = source === 'jobs' ? 'jobs' : source === 'exams' ? 'exams' : 'notifications';
-    const column = source === 'jobs' ? 'department' : source === 'exams' ? 'category' : 'type';
+    const table = source === 'jobs' ? 'jobs' : source === 'exams' ? 'exams' : source === 'tests' ? 'tests' : 'notifications';
+    const column = source === 'jobs' ? 'department' : source === 'exams' ? 'category' : source === 'tests' ? 'category' : 'type';
 
     try {
       const { error } = await supabase
@@ -97,8 +105,8 @@ export default function ManageCategories() {
       title: "Delete Category",
       message: `Are you sure you want to remove the category "${cat.name}"? This will set all ${cat.count} items in this category to "Uncategorized".`,
       onConfirm: async () => {
-        const table = cat.source === 'jobs' ? 'jobs' : cat.source === 'exams' ? 'exams' : 'notifications';
-        const column = cat.source === 'jobs' ? 'department' : cat.source === 'exams' ? 'category' : 'type';
+        const table = cat.source === 'jobs' ? 'jobs' : cat.source === 'exams' ? 'exams' : cat.source === 'tests' ? 'tests' : 'notifications';
+        const column = cat.source === 'jobs' ? 'department' : cat.source === 'exams' ? 'category' : cat.source === 'tests' ? 'category' : 'type';
 
         try {
           const { error } = await supabase
@@ -117,14 +125,14 @@ export default function ManageCategories() {
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-12">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Manage Categories</h1>
-          <p className="text-gray-500">Edit or delete categories across Jobs, Exams, and Notifications</p>
+          <h1 className="text-4xl font-black text-gray-900 uppercase tracking-tight">Category Dashboard</h1>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px] mt-2">Centralized management for Jobs, Exams, Tests, and Notifications</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         {/* Jobs Categories */}
         <CategorySection 
           title="Job Categories" 
@@ -154,7 +162,19 @@ export default function ManageCategories() {
           title="Notification Types" 
           icon={<Bell className="text-purple-600" />}
           items={categories.filter(c => c.source === 'notifications')}
-          onEdit={(name) => setEditingCategory({ oldName: name, newName: name, source: 'notifications' })}
+          onEdit={(name: string) => setEditingCategory({ oldName: name, newName: name, source: 'notifications' })}
+          onDelete={handleDelete}
+          editingCategory={editingCategory}
+          setEditingCategory={setEditingCategory}
+          handleRename={handleRename}
+        />
+
+        {/* Test Categories */}
+        <CategorySection 
+          title="Mock Test Categories" 
+          icon={<Target className="text-orange-600" />}
+          items={categories.filter(c => c.source === 'tests')}
+          onEdit={(name: string) => setEditingCategory({ oldName: name, newName: name, source: 'tests' })}
           onDelete={handleDelete}
           editingCategory={editingCategory}
           setEditingCategory={setEditingCategory}

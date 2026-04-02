@@ -93,6 +93,23 @@ export default function AttemptTest() {
 
       const { data, error } = await supabase.from("tests").select("*").eq("id", id).single();
       if (data) {
+        // TIME-BASED ACCESS CONTROL
+        const now = new Date();
+        const start = data.start_date ? new Date(data.start_date) : new Date(0);
+        const end = data.end_date ? new Date(data.end_date) : new Date(now.getTime() + 100 * 365 * 24 * 60 * 60 * 1000);
+
+        if (now < start) {
+          alert(`This assessment is scheduled to start on ${start.toLocaleString()}. Please come back then!`);
+          navigate("/user/tests");
+          return;
+        }
+
+        if (now > end) {
+          alert(`This assessment ended on ${end.toLocaleString()}. Access is no longer permitted.`);
+          navigate("/user/tests");
+          return;
+        }
+
         const sectionOrder = data.sections || ["General Section"];
         let processedQuestions: any[] = [];
         const questionsBySection: Record<string, any[]> = {};

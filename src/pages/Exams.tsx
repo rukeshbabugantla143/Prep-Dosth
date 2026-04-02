@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { slugify } from "../utils";
 import { supabase } from "../services/supabaseClient";
-import { format } from "date-fns";
-import { Search } from "lucide-react";
+import { format, differenceInDays, isBefore, startOfDay } from "date-fns";
+import { Search, Calendar, ChevronRight } from "lucide-react";
 
 export default function Exams() {
   const [exams, setExams] = useState<any[]>([]);
@@ -124,30 +124,37 @@ export default function Exams() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredExams.length > 0 ? filteredExams.map(exam => (
-          <div key={exam.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition duration-300 flex flex-col">
-            <h2 className="text-2xl font-bold text-blue-700 mb-2">{exam.title}</h2>
-            <p className="text-gray-600 font-medium mb-4 flex-grow line-clamp-3">{getCleanDescription(exam.description)}</p>
-            
-            <div className="space-y-2 text-sm text-gray-700 mb-6">
-              <div className="flex justify-between border-b border-gray-50 pb-1">
-                <span className="text-gray-500">Exam Date:</span>
-                <span className="font-semibold text-red-600">{format(new Date(exam.date), 'dd MMM yyyy')}</span>
+        {filteredExams.length > 0 ? filteredExams.map(exam => {
+          const examDate = new Date(exam.date);
+          const today = startOfDay(new Date());
+          const daysLeft = differenceInDays(startOfDay(examDate), today);
+          const isPast = isBefore(startOfDay(examDate), today);
+
+          return (
+            <div key={exam.id} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[200px]">
+              <div className="flex-grow">
+                <h2 className="text-xl font-bold text-gray-900 mb-1">{exam.title}</h2>
+                <p className="text-gray-400 text-sm">
+                  {exam.category || 'Entrance Exam'}
+                </p>
+                
+                <div className="mt-8">
+                  <p className="text-gray-500 text-sm">
+                    {format(examDate, 'dd/MM/yyyy')}
+                  </p>
+                  <div className="flex justify-between items-end">
+                    <p className={`font-bold ${isPast ? 'text-gray-400' : 'text-[#d00000]'}`}>
+                      {isPast ? 'Expired' : (daysLeft === 0 ? 'Exam Today' : `${daysLeft} days left`)}
+                    </p>
+                    <Link to={`/exams/${slugify(exam.title)}`} className="text-[#15b86c] font-bold text-sm">
+                      View Details
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div className="flex flex-col gap-3 mt-auto">
-              <Link to={`/exams/${slugify(exam.title)}`} className="w-full text-center bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition shadow-sm">
-                View Full Details
-              </Link>
-              {exam.link && (
-                <a href={exam.link.startsWith('http') ? exam.link : `https://${exam.link}`} target="_blank" rel="noreferrer" className="w-full text-center bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition text-sm">
-                  Official Link
-                </a>
-              )}
-            </div>
-          </div>
-        )) : (
+          );
+        }) : (
           <div className="col-span-full text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
             <p className="text-gray-500 font-medium">No exams found matching your criteria.</p>
           </div>

@@ -381,6 +381,8 @@ export default function ManageTests() {
   const [currentPage, setCurrentPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [showMathGuide, setShowMathGuide] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
 
@@ -404,8 +406,12 @@ export default function ManageTests() {
   };
 
   const fetchExams = async () => {
-    const { data, error } = await supabase.from("exams").select("id, title");
-    if (data) setExams(data);
+    const { data, error } = await supabase.from("exams").select("id, title, category");
+    if (data) {
+      setExams(data);
+      const uniqueCats = Array.from(new Set(data.map((e: any) => e.category).filter(Boolean)));
+      setCategories(uniqueCats as string[]);
+    }
     if (error) console.error("Error fetching exams:", error);
   };
 
@@ -857,6 +863,16 @@ export default function ManageTests() {
       const testData: any = {
         title: currentTest.title,
         timeLimit: parseInt(currentTest.timeLimit),
+        category: currentTest.category || "Uncategorized",
+        is_free: currentTest.is_free || false,
+        is_live: currentTest.is_live || false,
+        test_type: currentTest.test_type || "Full Length Mock",
+        total_marks: parseInt(currentTest.total_marks) || 100,
+        languages: currentTest.languages || "English, Telugu",
+        start_date: currentTest.start_date || new Date().toISOString(),
+        end_date: currentTest.end_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        sections: currentTest.sections || ["General Section"],
+        instructions: currentTest.instructions || "",
         questions: currentTest.questions.map((q: any, index: number) => ({
           ...q,
           id: q.id || `q-${Date.now()}-${index}`
@@ -877,7 +893,18 @@ export default function ManageTests() {
       if (result.error) throw result.error;
 
       setIsEditing(false);
-      setCurrentTest({ questions: [], sections: ["General Section"] });
+      setCurrentTest({ 
+        questions: [], 
+        sections: ["General Section"], 
+        category: "Uncategorized",
+        is_free: false,
+        is_live: false,
+        test_type: "Full Length Mock",
+        total_marks: 100,
+        languages: "English, Telugu",
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      });
       fetchTests();
     } catch (err: any) {
       console.error("Error saving test:", err);
@@ -985,7 +1012,7 @@ export default function ManageTests() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Manage Tests</h1>
-        <button onClick={() => { setIsEditing(true); setCurrentTest({ questions: [], sections: ["General Section"] }); setActiveTab("General Section"); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
+        <button onClick={() => { setIsEditing(true); setCurrentTest({ questions: [], sections: ["General Section"], category: "Uncategorized", is_free: false, is_live: false, test_type: "Full Length Mock", total_marks: 100, languages: "English, Telugu", start_date: new Date().toISOString().split('T')[0], end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }); setActiveTab("General Section"); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
           <Plus size={20} /> Create Test
         </button>
       </div>
@@ -1021,6 +1048,140 @@ export default function ManageTests() {
                   onBlur={e => setCurrentTest((prev: any) => ({ ...prev, timeLimit: e.target.value }))}
                   className="border-2 border-gray-100 p-4 rounded-2xl w-full text-sm font-black focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all"
                   required
+                />
+              </div>
+            </div>
+
+            <div className="relative">
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">Target Exam Category</label>
+              <div className="flex gap-4">
+                <input
+                  type="text"
+                  placeholder="Exam Category (e.g., TS ECET)"
+                  value={currentTest.category || ""}
+                  onChange={e => {
+                    setCurrentTest((prev: any) => ({ ...prev, category: e.target.value }));
+                    setShowCategorySuggestions(true);
+                  }}
+                  onFocus={() => setShowCategorySuggestions(true)}
+                  className="border-2 border-gray-100 p-4 rounded-2xl w-full text-sm font-black focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all"
+                  required
+                />
+              </div>
+              
+              {showCategorySuggestions && categories.length > 0 && (
+                <div className="absolute z-[60] mt-2 w-full bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  <div className="p-2 grid grid-cols-2 gap-2">
+                    {categories.map(cat => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          setCurrentTest((prev: any) => ({ ...prev, category: cat }));
+                          setShowCategorySuggestions(false);
+                        }}
+                        className="text-left px-4 py-3 rounded-xl hover:bg-blue-50 text-xs font-bold text-gray-700 transition"
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="bg-gray-50 p-2 text-center border-t border-gray-100">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowCategorySuggestions(false)}
+                      className="text-[9px] font-black text-gray-400 uppercase hover:text-gray-600"
+                    >
+                      Close Suggestions
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
+              <div className="space-y-4">
+                <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest pl-1">Test Type</label>
+                <select
+                  value={currentTest.test_type || "Full Length Mock"}
+                  onChange={e => setCurrentTest((prev: any) => ({ ...prev, test_type: e.target.value }))}
+                  className="border-2 border-white p-4 rounded-2xl w-full text-sm font-black focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm"
+                  required
+                >
+                  <option value="Full Length Mock">Full Length Mock</option>
+                  <option value="Chapter Test">Chapter Test</option>
+                  <option value="Subject Test">Subject Test</option>
+                  <option value="CA Booster">CA Booster</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={currentTest.is_free || false}
+                    onChange={e => setCurrentTest((prev: any) => ({ ...prev, is_free: e.target.checked }))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <span className="ml-3 text-xs font-black text-gray-700 uppercase tracking-widest">Free Test</span>
+                </label>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={currentTest.is_live || false}
+                    onChange={e => setCurrentTest((prev: any) => ({ ...prev, is_live: e.target.checked }))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  <span className="ml-3 text-xs font-black text-gray-700 uppercase tracking-widest">Live Test</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 bg-gray-50/50 p-6 rounded-2xl border border-gray-100 mt-6">
+              <div className="space-y-4">
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Total Marks</label>
+                <input
+                  type="number"
+                  value={currentTest.total_marks || 100}
+                  onChange={e => setCurrentTest((prev: any) => ({ ...prev, total_marks: e.target.value }))}
+                  className="border-2 border-white p-4 rounded-2xl w-full text-sm font-black focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm"
+                  placeholder="e.g. 100"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Languages</label>
+                <input
+                  type="text"
+                  value={currentTest.languages || "English, Telugu"}
+                  onChange={e => setCurrentTest((prev: any) => ({ ...prev, languages: e.target.value }))}
+                  className="border-2 border-white p-4 rounded-2xl w-full text-sm font-black focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm"
+                  placeholder="e.g. English, Telugu"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Available From</label>
+                <input
+                  type="date"
+                  value={currentTest.start_date || ""}
+                  onChange={e => setCurrentTest((prev: any) => ({ ...prev, start_date: e.target.value }))}
+                  className="border-2 border-white p-4 rounded-2xl w-full text-sm font-black focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Available To</label>
+                <input
+                  type="date"
+                  value={currentTest.end_date || ""}
+                  onChange={e => setCurrentTest((prev: any) => ({ ...prev, end_date: e.target.value }))}
+                  className="border-2 border-white p-4 rounded-2xl w-full text-sm font-black focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm"
                 />
               </div>
             </div>
@@ -1338,6 +1499,7 @@ export default function ManageTests() {
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100 text-gray-600">
               <th className="p-4 font-semibold">Title</th>
+              <th className="p-4 font-semibold">Category</th>
               <th className="p-4 font-semibold">Time Limit</th>
               <th className="p-4 font-semibold">Questions</th>
               <th className="p-4 font-semibold text-right">Actions</th>
@@ -1347,6 +1509,11 @@ export default function ManageTests() {
             {tests.map(test => (
               <tr key={test.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
                 <td className="p-4 font-medium text-gray-800">{test.title}</td>
+                <td className="p-4">
+                  <span className="text-[10px] font-black uppercase bg-blue-50 text-blue-600 px-3 py-1 rounded-full whitespace-nowrap">
+                    {test.category || "Uncategorized"}
+                  </span>
+                </td>
                 <td className="p-4 text-gray-600">{test.timeLimit} mins</td>
                 <td className="p-4 text-gray-600">{test.questions?.length || 0}</td>
                 <td className="p-4 flex justify-end gap-3">

@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { slugify } from "../utils";
 import { Search, Users, Award, BookOpen, PlayCircle, ChevronRight, CheckCircle2, FileText, Clock, Calendar, Video } from "lucide-react";
 import { CardSkeleton, CategorySkeleton, Skeleton } from "../components/common/Skeleton";
+import { format, differenceInDays, isBefore, startOfDay } from "date-fns";
 
 export default function Home() {
   const [tests, setTests] = useState<any[]>([]);
@@ -208,28 +209,37 @@ export default function Home() {
           {loading && latestExams.length === 0 ? (
             [1, 2, 3].map(i => <CardSkeleton key={`skeleton-exam-${i}`} />)
           ) : (
-            latestExams.map((exam, idx) => (
-              <div key={exam.id || `exam-${idx}`} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                <h3 className="font-bold text-gray-900 text-lg mb-2">{exam.title}</h3>
-                <p className="text-sm text-gray-500 mb-4 line-clamp-2">{exam.category}</p>
-                <div className="flex justify-between items-center">
-                  <div className="flex flex-col">
-                    <span className="text-sm text-gray-500">{exam.date ? new Date(exam.date).toLocaleDateString() : 'TBA'}</span>
-                    <span className="text-sm text-red-600 font-bold">
-                      {(() => {
-                        if (!exam.date) return "Date TBA";
-                        const diff = new Date(exam.date).getTime() - new Date().getTime();
-                        const daysLeft = Math.floor(diff / (1000 * 60 * 60 * 24));
-                        if (daysLeft > 0) return `${daysLeft} days left`;
-                        if (daysLeft === 0) return "Today";
-                        return "Exam Passed";
-                      })()}
-                    </span>
+            latestExams.map((exam, idx) => {
+              const examDate = new Date(exam.date);
+              const today = startOfDay(new Date());
+              const daysLeft = differenceInDays(startOfDay(examDate), today);
+              const isPast = isBefore(startOfDay(examDate), today);
+
+              return (
+                <div key={exam.id || `exam-${idx}`} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[200px]">
+                  <div className="flex-grow">
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">{exam.title}</h3>
+                    <p className="text-gray-400 text-sm">
+                      {exam.category || 'Entrance Exam'}
+                    </p>
+                    
+                    <div className="mt-8">
+                      <p className="text-gray-500 text-sm">
+                        {format(examDate, 'dd/MM/yyyy')}
+                      </p>
+                      <div className="flex justify-between items-end">
+                        <p className={`font-bold ${isPast ? 'text-gray-400' : 'text-[#d00000]'}`}>
+                          {isPast ? 'Expired' : (daysLeft === 0 ? 'Exam Today' : `${daysLeft} days left`)}
+                        </p>
+                        <Link to={`/exams/${slugify(exam.title)}`} className="text-[#15b86c] font-bold text-sm">
+                          View Details
+                        </Link>
+                      </div>
+                    </div>
                   </div>
-                  <Link to={`/exams/${slugify(exam.title)}`} className="text-[#15b86c] font-bold text-sm hover:underline">View Details</Link>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </section>
