@@ -6,6 +6,8 @@ import { Calendar, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, Check
 import { format } from 'date-fns';
 import FAQSection from '../components/FAQSection';
 import IconList from '../components/common/IconList';
+import SEO from '../components/common/SEO';
+
 
 export default function ExamDetails() {
   const { slug } = useParams();
@@ -14,7 +16,10 @@ export default function ExamDetails() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [importantLinks, setImportantLinks] = useState<any[]>([]);
+  const [parentExam, setParentExam] = useState<any>(null);
+  const [subpages, setSubpages] = useState<any[]>([]);
   const [tests, setTests] = useState<any[]>([]);
+
 
   useEffect(() => {
     const fetchExam = async () => {
@@ -31,6 +36,26 @@ export default function ExamDetails() {
             .eq('exam_id', foundExam.id)
             .order('order_index', { ascending: true });
           if (linksData) setImportantLinks(linksData);
+
+          // NEW: Fetch parent exam if this is a subpage
+          if (foundExam.parent_id) {
+            const { data: parentData } = await supabase
+              .from('exams')
+              .select('id, title')
+              .eq('id', foundExam.parent_id)
+              .single();
+            if (parentData) setParentExam(parentData);
+          } else {
+            setParentExam(null);
+          }
+
+          // NEW: Fetch subpages if this is a main page
+          const { data: subData } = await supabase
+            .from('exams')
+            .select('id, title')
+            .eq('parent_id', foundExam.id)
+            .eq('is_subpage', true);
+          if (subData) setSubpages(subData);
         }
       }
       if (error) console.error("Error fetching exam details:", error);
@@ -39,8 +64,8 @@ export default function ExamDetails() {
     fetchExam();
   }, [slug]);
 
-  const { toc, sections, status, customDates, officialLinks, notificationLinks, youtubeVideos, logoUrl, featuredTestIds } = React.useMemo(() => {
-    if (!exam?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [], youtubeVideos: [], logoUrl: '', featuredTestIds: [] };
+  const { toc, sections, status, customDates, officialLinks, notificationLinks, youtubeVideos, logoUrl, promoTitle, promoDescription, promoButtonText, promoLink, promoBgColor, bannerImage, featuredTestIds } = React.useMemo(() => {
+    if (!exam?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [], youtubeVideos: [], logoUrl: '', promoTitle: '', promoDescription: '', promoButtonText: '', promoLink: '', promoBgColor: '', bannerImage: '', featuredTestIds: [] };
     
     const generatedToc: { id: string, text: string }[] = [];
     const generatedSections: any[] = [];
@@ -50,6 +75,12 @@ export default function ExamDetails() {
     let examNotificationLinks: { label: string, url: string, color?: string }[] = [];
     let examYoutubeVideos: { url: string, title: string }[] = [];
     let examLogoUrl = '';
+    let examPromoTitle = '';
+    let examPromoDescription = '';
+    let examPromoButtonText = '';
+    let examPromoLink = '';
+    let examPromoBgColor = '';
+    let examBannerImage = '';
     let examFeaturedTestIds: string[] = [];
 
     try {
@@ -62,6 +93,12 @@ export default function ExamDetails() {
           examStatus = parsedData.status || 'Confirmed';
           examCustomDates = parsedData.important_dates || [];
           examLogoUrl = parsedData.logo_url || '';
+          examPromoTitle = parsedData.promo_title || parsedData.banner_text || '';
+          examPromoDescription = parsedData.promo_description || '';
+          examPromoButtonText = parsedData.promo_button_text || '';
+          examPromoLink = parsedData.promo_link || '';
+          examPromoBgColor = parsedData.promo_bg_color || 'from-red-900 to-black';
+          examBannerImage = parsedData.banner_image || '';
           examFeaturedTestIds = parsedData.featured_test_ids || [];
           
           if (parsedData.official_links) {
@@ -102,10 +139,13 @@ export default function ExamDetails() {
         if (examYoutubeVideos.length > 0) generatedToc.push({ id: 'videos', text: 'Preparation Videos' });
 
         return { 
-          toc: generatedToc, sections: generatedSections, status: examStatus, 
-          customDates: examCustomDates, officialLinks: examOfficialLinks, 
-          notificationLinks: examNotificationLinks, youtubeVideos: examYoutubeVideos, 
-          logoUrl: examLogoUrl, featuredTestIds: examFeaturedTestIds 
+          toc: generatedToc, sections: generatedSections, status: examStatus, customDates: examCustomDates,
+          officialLinks: examOfficialLinks, notificationLinks: examNotificationLinks, 
+          youtubeVideos: examYoutubeVideos, logoUrl: examLogoUrl, 
+          promoTitle: examPromoTitle, promoDescription: examPromoDescription, 
+          promoButtonText: examPromoButtonText, promoLink: examPromoLink, promoBgColor: examPromoBgColor,
+          bannerImage: examBannerImage,
+          featuredTestIds: examFeaturedTestIds 
         };
       }
     } catch (e) {
@@ -146,7 +186,7 @@ export default function ExamDetails() {
     return { 
       toc: generatedToc, sections: generatedSections, status: 'Confirmed', customDates: [],
       officialLinks: exam.link ? [{ label: 'Official Website', url: exam.link }] : [],
-      notificationLinks: [], youtubeVideos: [], logoUrl: '', featuredTestIds: []
+      notificationLinks: [], youtubeVideos: [], logoUrl: '', promoTitle: '', promoDescription: '', promoButtonText: '', promoLink: '', promoBgColor: '', bannerImage: '', featuredTestIds: []
     };
   }, [exam?.description, exam?.link]);
 
@@ -184,6 +224,10 @@ export default function ExamDetails() {
     }
   };
 
+  const handleDownloadPDF = () => {
+    window.print();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen pt-24 flex justify-center items-center bg-gray-50">
@@ -214,13 +258,25 @@ export default function ExamDetails() {
 
   return (
     <div className="bg-gray-50 relative">
+      <SEO 
+        title={exam.title} 
+        description={`${exam.title} Preparation, Mock Tests, Syllabus, Pattern, and Eligibility criteria. Registration process and important dates for ${exam.title}.`}
+      />
       {/* Breadcrumbs */}
-      <div className="bg-white border-b border-gray-200 py-3">
+      <div className="bg-white border-b border-gray-200 py-3 print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center text-sm text-gray-500">
             <Link to="/" className="hover:text-[#15b86c]">Home</Link>
             <ChevronRight size={16} className="mx-2" />
             <Link to="/exams" className="hover:text-[#15b86c]">Exams</Link>
+            {parentExam && (
+              <>
+                <ChevronRight size={16} className="mx-2" />
+                <Link to={`/exams/${slugify(parentExam.title)}`} className="hover:text-[#15b86c]">
+                  {parentExam.title}
+                </Link>
+              </>
+            )}
             <ChevronRight size={16} className="mx-2" />
             <span className="text-gray-900 font-medium truncate">{exam.title}</span>
           </div>
@@ -230,28 +286,35 @@ export default function ExamDetails() {
       {/* Hero Section */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          {parentExam && (
+            <div className="mb-6 animate-in slide-in-from-left-4 duration-500">
+              <Link 
+                to={`/exams/${slugify(parentExam.title)}`}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all shadow-sm"
+              >
+                <ArrowLeft size={14} /> Part of {parentExam.title}
+              </Link>
+            </div>
+          )}
           <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
             <div className="hidden md:block w-64 shrink-0">
               <img src={logoUrl || "https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png"} alt="Exam Logo" className="w-full h-auto object-contain max-h-48" referrerPolicy="no-referrer" />
             </div>
             <div className="flex-1">
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight">
-                {exam.title} Exam - Registration (Started), Date, Syllabus, Pattern, Eligibility, Admission Process
+                {exam.title}
               </h1>
               <div className="flex flex-wrap gap-4">
                 <Link to="/tests" className="bg-[#15b86c] text-white px-6 py-2.5 rounded font-medium hover:bg-[#12a15e] transition flex items-center gap-2">
                   Get Started for Free
                 </Link>
-                {exam.link && (
-                  <a 
-                    href={exam.link.startsWith('http') ? exam.link : `https://${exam.link}`} 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="bg-white text-[#15b86c] border border-[#15b86c] px-6 py-2.5 rounded font-medium hover:bg-green-50 transition flex items-center gap-2"
-                  >
-                    <Download size={18} /> Download as PDF
-                  </a>
-                )}
+                <button 
+                  onClick={handleDownloadPDF}
+                  className="bg-white text-[#15b86c] border border-[#15b86c] px-6 py-2.5 rounded font-medium hover:bg-green-50 transition flex items-center gap-2 print:hidden"
+                >
+                  <Download size={18} />
+                  Download as PDF
+                </button>
               </div>
             </div>
           </div>
@@ -259,7 +322,7 @@ export default function ExamDetails() {
       </div>
 
       {/* Sticky Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 inset-x-0 z-40 shadow-sm">
+      <div className="bg-white border-b border-gray-200 sticky top-0 inset-x-0 z-40 shadow-sm print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8 overflow-x-auto scrollbar-hide w-full">
             {tabs.map((tab) => (
@@ -281,8 +344,14 @@ export default function ExamDetails() {
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <div id="exam-content-pdf" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative bg-gray-50">
+        
+        {/* Watermark for PDF Export */}
+        <div className="fixed inset-0 pointer-events-none z-0 flex justify-center items-center opacity-10 overflow-hidden hidden print:flex">
+          <img src="https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png" alt="Watermark" className="w-[60%] max-w-[500px] object-contain" referrerPolicy="no-referrer" />
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-8 relative z-10">
           
           {/* Left Column (Content) */}
           <div className="lg:w-2/3 space-y-6">
@@ -366,99 +435,84 @@ export default function ExamDetails() {
                     </div>
                     {/* Inject Mock Tests in the Middle (after 2 sections) */}
                     {index === 1 && tests.length > 0 && (
-                      <div id="mock-tests" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32 overflow-hidden">
-                        <div className="flex justify-between items-end mb-8">
+                      <div id="mock-tests" className="bg-gradient-to-br from-[#15b86c]/20 via-[#f0fdf4] to-blue-50/30 p-6 md:p-8 rounded-[32px] shadow-sm border border-green-100/50 scroll-mt-32 overflow-hidden relative">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-[#15b86c]/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-100/20 rounded-full blur-3xl -ml-32 -mb-32 pointer-events-none"></div>
+
+                        <div className="flex justify-between items-end mb-6 relative z-10">
                           <div>
-                            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2 uppercase tracking-tight">
-                              <Trophy className="text-[#0ea5e9]" /> Practice Mock Tests
+                            <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3 uppercase tracking-tighter">
+                              <div className="w-8 h-8 bg-[#15b86c] rounded-lg flex items-center justify-center shadow-lg shadow-green-200">
+                                <Trophy className="text-white" size={18} />
+                              </div>
+                              Practice Mock Tests
                             </h2>
-                            <p className="text-gray-500 text-xs mt-1 uppercase font-bold tracking-widest">Hand-picked assessments for your {exam.title} preparation.</p>
+                            <p className="text-gray-600 text-[11px] mt-1.5 uppercase font-black tracking-widest opacity-90 pl-11">Hand-picked assessments for your {exam.title} preparation.</p>
                           </div>
-                          <Link to="/tests" className="text-[#0ea5e9] text-xs font-black uppercase tracking-widest hover:underline px-4 py-2 bg-blue-50 rounded-lg transition-all">View All</Link>
+                          <Link to="/tests" className="text-[#15b86c] text-[11px] font-black uppercase tracking-widest hover:bg-[#15b86c] hover:text-white px-5 py-2.5 bg-white rounded-full transition-all shadow-md shadow-green-100/50 border border-green-100">View All</Link>
                         </div>
 
                         {/* Pixel-Perfect Premium Series Card */}
                         {/* Grid container for individual test cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
                           {tests.map((test: any) => (
-                            <div key={test.id} className="group bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-2xl hover:shadow-blue-600/10 transition-all duration-500 flex flex-col relative w-full h-full">
-                              {/* Top Blue Bar */}
-                              <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-cyan-400 to-blue-600"></div>
-                              
-                              <div className="p-5 flex-grow">
-                                {/* Header: Folder + Join Now */}
-                                <div className="flex justify-between items-start mb-4">
-                                  <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
-                                    <Folder className="text-white" size={24} />
-                                  </div>
-                                  <div className="flex items-center gap-1 bg-gradient-to-r from-amber-400 via-orange-400 to-orange-500 text-white px-3 py-1.5 rounded-full shadow-md transform hover:scale-105 transition-transform cursor-pointer">
-                                    <Users size={12} className="fill-white" />
-                                    <span className="text-[9px] font-black uppercase tracking-tight">Join Now</span>
-                                  </div>
+                            <div key={test.id} className="bg-white rounded-[24px] border border-white overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 flex flex-col relative w-full h-full p-4 mt-0 group">
+                              {/* Glowing Background Effect on Hover */}
+                              <div className="absolute inset-0 bg-gradient-to-br from-[#15b86c]/5 to-blue-50/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                              {/* Header: Logo and Users */}
+                              <div className="flex justify-between items-start mb-3 relative z-10">
+                                <div className="w-11 h-11 bg-gray-50 rounded-2xl flex items-center justify-center p-1.5 border border-gray-100 shadow-inner group-hover:bg-white transition-colors duration-300">
+                                  <img src={test.logo_url || logoUrl || "https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png"} alt="Logo" className="w-full h-full object-contain rounded-xl" />
                                 </div>
-                                
-                                {/* Title: Use the actual test title */}
-                                <h2 className="text-[1.2rem] font-black text-gray-900 leading-[1.2] mb-4 uppercase tracking-tight line-clamp-2">
+                                <div className="flex items-center gap-1.5 bg-gray-50 text-gray-600 px-3 py-1 rounded-full text-[10px] font-bold border border-gray-100 group-hover:bg-white transition-colors duration-300">
+                                  <Zap size={11} className="text-orange-500 fill-orange-500" />
+                                  <span>{test.users_count || `${Math.floor(Math.random() * 80) + 10}k`} Users</span>
+                                </div>
+                              </div>
+                              
+                              {/* Title */}
+                              <div className="relative z-10">
+                                <h2 className="text-[16px] font-black text-gray-900 leading-snug mb-0.5 line-clamp-2 min-h-0 group-hover:text-[#15b86c] transition-colors duration-300">
                                   {test.title}
                                 </h2>
 
-                                {/* Stats Summary Section */}
-                                <div className="flex items-center justify-between py-3 border-t border-gray-50">
-                                  <span className="text-[10px] font-bold text-gray-900 uppercase">1 Total Test</span>
-                                  <span className={`text-[10px] font-bold uppercase ${test.is_free ? 'text-green-600' : 'text-orange-500'}`}>
-                                    {test.is_free ? 'Free Test' : 'Premium Test'}
-                                  </span>
+                                {/* Tests Count */}
+                                <div className="text-[12px] mb-1.5 text-gray-500 font-bold tracking-tight">
+                                  {test.total_tests || 1} Tests <span className="text-gray-200 mx-1">•</span> <span className="text-[#15b86c]">{test.free_tests || (test.is_free ? 1 : 0)} Free</span>
                                 </div>
 
                                 {/* Languages */}
-                                <div className="py-3 border-t border-gray-50 flex items-center gap-2">
-                                  <Globe size={12} className="text-blue-400" />
-                                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">English, Telugu, Hindi</span>
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-[#06b6d4] text-[10px] mb-3 rounded font-black uppercase tracking-widest border border-blue-100">
+                                  <Globe size={10} /> {test.languages || 'English'}
                                 </div>
 
-                                {/* List Sections: Highlight the specific type of this test */}
-                                <div className="py-1 space-y-2.5">
-                                  <div className={`flex items-center gap-3 ${test.is_live ? 'opacity-100' : 'opacity-40'}`}>
-                                    <div className="w-7 h-7 rounded-xl bg-pink-50 flex items-center justify-center">
-                                      <Zap size={12} className={`text-pink-600 ${test.is_live ? 'fill-pink-600' : ''}`} />
-                                    </div>
-                                    <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
-                                      {test.is_live ? 'Live Test' : '0 Live Tests'}
-                                    </span>
-                                  </div>
-                                  
-                                  <div className={`flex items-center gap-3 ${test.test_type === "Chapter Test" ? 'opacity-100' : 'opacity-40'}`}>
-                                    <div className="w-7 h-7 rounded-xl bg-orange-50 flex items-center justify-center">
-                                      <Layers size={12} className="text-orange-600" />
-                                    </div>
-                                    <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
-                                      {test.test_type === "Chapter Test" ? 'Chapter Test' : '0 Chapter Tests'}
-                                    </span>
-                                  </div>
-                                  
-                                  <div className={`flex items-center gap-3 ${test.test_type === "CA Booster" ? 'opacity-100' : 'opacity-40'}`}>
-                                    <div className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center">
-                                      <FileText size={12} className="text-blue-600" />
-                                    </div>
-                                    <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
-                                      {test.test_type === "CA Booster" ? 'CA Booster' : '0 CA Booster'}
-                                    </span>
-                                  </div>
+                                {/* Features List */}
+                                <ul className="text-[12px] text-gray-600 space-y-1.5 mb-4 flex-grow list-none p-0">
+                                  {test.is_live && (
+                                    <li className="flex items-center gap-2">
+                                      <div className="w-1 h-1 rounded-full bg-red-500 animate-pulse"></div>
+                                      Live Test Series
+                                    </li>
+                                  )}
+                                  <li className="flex items-center gap-2">
+                                    <CheckCircle2 size={12} className="text-[#15b86c]" /> 
+                                    Latest Exam Pattern
+                                  </li>
+                                  <li className="flex items-center gap-2">
+                                    <CheckCircle2 size={12} className="text-[#15b86c]" /> 
+                                    Detailed Analysis
+                                  </li>
+                                </ul>
 
-                                  <div className="flex items-center gap-3 pt-1">
-                                    <div className="w-7"></div> {/* Small Spacer */}
-                                    <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">+ Real-time Content</span>
-                                  </div>
-                                </div>
+                                {/* Footer Action Button */}
+                                <Link 
+                                  to={`/user/test/${test.id}`}
+                                  className="w-full bg-[#15b86c] hover:bg-[#12a15e] text-white py-2.5 rounded-xl text-xs font-black transition-all duration-300 text-center block mt-auto shadow-lg shadow-green-100 uppercase tracking-widest"
+                                >
+                                  Start Mock Test
+                                </Link>
                               </div>
-
-                              {/* Footer Action Button */}
-                              <Link 
-                                to={`/user/test/${test.id}`}
-                                className="w-full bg-[#0ea5e9] hover:bg-[#0284c7] text-white py-3.5 font-black uppercase text-[11px] tracking-[0.2em] transition-all duration-300 text-center block mt-auto"
-                              >
-                                View Test
-                              </Link>
                             </div>
                           ))}
                         </div>
@@ -469,98 +523,73 @@ export default function ExamDetails() {
                 
                 {/* Fallback if sections < 2: show tests at the end */}
                 {sections.length < 2 && tests.length > 0 && (
-                  <div id="mock-tests" className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32 overflow-hidden relative">
-                    <div className="flex justify-between items-end mb-8">
+                  <div id="mock-tests" className="bg-gradient-to-br from-blue-50/50 via-[#f8fbff] to-indigo-50/50 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 scroll-mt-32 overflow-hidden relative">
+                    <div className="flex justify-between items-end mb-5 relative z-10">
                       <div>
                         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2 uppercase tracking-tight">
-                          <Trophy className="text-[#0ea5e9]" /> Practice Mock Tests
+                          <Trophy className="text-[#0ea5e9]" size={28} /> Practice Mock Tests
                         </h2>
-                        <p className="text-gray-500 text-xs mt-1 uppercase font-bold tracking-widest">Hand-picked assessments for your {exam.title} preparation.</p>
+                        <p className="text-gray-500 text-[10px] mt-0.5 uppercase font-black tracking-widest opacity-80">Hand-picked assessments for your {exam.title} preparation.</p>
                       </div>
-                      <Link to="/tests" className="text-[#0ea5e9] text-xs font-black uppercase tracking-widest hover:underline px-4 py-2 bg-blue-50 rounded-lg transition-all">View All</Link>
+                      <Link to="/tests" className="text-[#0ea5e9] text-[11px] font-black uppercase tracking-widest hover:underline px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg transition-all shadow-sm border border-blue-100/50">View All</Link>
                     </div>
 
                     {/* Pixel-Perfect Premium Series Card (Fallback) */}
                     {/* Grid container for individual test cards (Fallback) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {tests.map((test: any) => (
-                        <div key={test.id} className="group bg-white rounded-[2rem] border border-gray-100 overflow-hidden shadow-2xl hover:shadow-blue-600/10 transition-all duration-500 flex flex-col relative w-full h-full">
-                          {/* Top Blue Bar */}
-                          <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-cyan-400 to-blue-600"></div>
+                        <div key={test.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col relative w-full h-full p-4 mt-0">
+                          {/* Header: Logo and Users */}
+                          <div className="flex justify-between items-start mb-3 relative z-10">
+                            <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 p-1.5">
+                              <img src={test.logo_url || logoUrl || "https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png"} alt="Logo" className="w-full h-full object-contain rounded-full" />
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-white text-gray-600 px-2.5 py-0.5 rounded-full shadow-sm text-[10px] font-bold border border-gray-100">
+                              <Zap size={11} className="text-orange-500 fill-orange-500" />
+                              <span>{test.users_count || `${Math.floor(Math.random() * 80) + 10}k`} Users</span>
+                            </div>
+                          </div>
                           
-                          <div className="p-5 flex-grow">
-                            {/* Header: Folder + Join Now */}
-                            <div className="flex justify-between items-start mb-4">
-                              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
-                                <Folder className="text-white" size={24} />
-                              </div>
-                              <div className="flex items-center gap-1 bg-gradient-to-r from-amber-400 via-orange-400 to-orange-500 text-white px-3 py-1.5 rounded-full shadow-md transform hover:scale-105 transition-transform cursor-pointer">
-                                <Users size={12} className="fill-white" />
-                                <span className="text-[9px] font-black uppercase tracking-tight">Join Now</span>
-                              </div>
-                            </div>
-                            
-                            {/* Title: Use the actual test title */}
-                            <h2 className="text-[1.2rem] font-black text-gray-900 leading-[1.2] mb-4 uppercase tracking-tight line-clamp-2">
-                              {test.title}
-                            </h2>
+                          {/* Title */}
+                          <h2 className="text-[15px] font-bold text-gray-900 leading-snug mb-0.5 line-clamp-2 min-h-0">
+                            {test.title}
+                          </h2>
 
-                            {/* Stats Summary Section */}
-                            <div className="flex items-center justify-between py-3 border-t border-gray-50">
-                              <span className="text-[10px] font-bold text-gray-900 uppercase">1 Total Test</span>
-                              <span className={`text-[10px] font-bold uppercase ${test.is_free ? 'text-green-600' : 'text-orange-500'}`}>
-                                {test.is_free ? 'Free Test' : 'Premium Test'}
-                              </span>
-                            </div>
+                          {/* Tests Count */}
+                          <div className="text-[12px] mb-1 text-gray-700 font-semibold tracking-wide">
+                            {test.total_tests || 1} Total Tests <span className="text-gray-200 mx-1">|</span> <span className="text-[#15b86c]">{test.free_tests || (test.is_free ? 1 : 0)} Free Tests</span>
+                          </div>
 
-                            {/* Languages */}
-                            <div className="py-3 border-t border-gray-50 flex items-center gap-2">
-                              <Globe size={12} className="text-blue-400" />
-                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">English, Telugu, Hindi</span>
-                            </div>
+                          {/* Languages */}
+                          <div className="text-[#06b6d4] text-[12px] mb-2 pb-2 border-b border-gray-50 font-bold uppercase tracking-tighter">
+                            {test.languages || 'English, Telugu, Hindi'}
+                          </div>
 
-                            {/* List Sections: Highlight original type */}
-                            <div className="py-1 space-y-2.5">
-                              <div className={`flex items-center gap-3 ${test.is_live ? 'opacity-100' : 'opacity-40'}`}>
-                                <div className="w-7 h-7 rounded-xl bg-pink-50 flex items-center justify-center">
-                                  <Zap size={12} className={`text-pink-600 ${test.is_live ? 'fill-pink-600' : ''}`} />
-                                </div>
-                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
-                                  {test.is_live ? 'Live Test' : '0 Live Tests'}
-                                </span>
-                              </div>
-                              
-                              <div className={`flex items-center gap-3 ${test.test_type === "Chapter Test" ? 'opacity-100' : 'opacity-40'}`}>
-                                <div className="w-7 h-7 rounded-xl bg-orange-50 flex items-center justify-center">
-                                  <Layers size={12} className="text-orange-600" />
-                                </div>
-                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
-                                  {test.test_type === "Chapter Test" ? 'Chapter Test' : '0 Chapter Tests'}
-                                </span>
-                              </div>
-                              
-                              <div className={`flex items-center gap-3 ${test.test_type === "CA Booster" ? 'opacity-100' : 'opacity-40'}`}>
-                                <div className="w-7 h-7 rounded-xl bg-blue-50 flex items-center justify-center">
-                                  <FileText size={12} className="text-blue-600" />
-                                </div>
-                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-tight">
-                                  {test.test_type === "CA Booster" ? 'CA Booster' : '0 CA Booster'}
-                                </span>
-                              </div>
+                          {/* Features List */}
+                          <ul className="text-[12px] text-gray-600 space-y-1.5 mb-1 flex-grow list-disc pl-4 marker:text-gray-300">
+                            {test.is_live && <li>Live Test</li>}
+                            {test.test_type === "Chapter Test" && <li>Chapter Test</li>}
+                            {test.test_type === "CA Booster" && <li>CA Booster</li>}
+                            {!test.is_live && test.test_type !== "Chapter Test" && test.test_type !== "CA Booster" && (
+                              <>
+                                <li>Latest Exam Pattern</li>
+                                <li>Detailed Performance Analysis</li>
+                              </>
+                            )}
+                            <li>Real-time Data</li>
+                          </ul>
 
-                              <div className="flex items-center gap-3 pt-1">
-                                <div className="w-7"></div> {/* Small Spacer */}
-                                <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">+ Real-time Content</span>
-                              </div>
-                            </div>
+                          {/* More Tests Link */}
+                          <div className="text-[#15b86c] text-[12px] font-black mb-3 flex items-center gap-1">
+                            +{test.more_tests || Math.floor(Math.random() * 50) + 5} more tests
                           </div>
 
                           {/* Footer Action Button */}
                           <Link 
                             to={`/user/test/${test.id}`}
-                            className="w-full bg-[#0ea5e9] hover:bg-[#0284c7] text-white py-3.5 font-black uppercase text-[11px] tracking-[0.2em] transition-all duration-300 text-center block mt-auto"
+                            className="w-full bg-[#06b6d4] hover:bg-[#0891b2] text-white py-2 rounded-lg text-sm font-black transition-all duration-300 text-center block mt-auto shadow-sm tracking-tight uppercase"
                           >
-                            View Test
+                            Start Test
                           </Link>
                         </div>
                       ))}
@@ -722,16 +751,28 @@ export default function ExamDetails() {
           </div>
 
           {/* Right Column (Sidebar) */}
-          <div className="lg:w-1/3">
+          <div className="lg:w-1/3 print:hidden">
             <div className="sticky top-32 space-y-6 self-start">
               {/* Promo Banner */}
-              <div className="bg-gradient-to-br from-red-900 to-black rounded-lg p-6 text-white text-center shadow-md">
-                <h3 className="text-2xl font-bold mb-2">Crack {exam.title}</h3>
-                <p className="text-sm text-gray-300 mb-4">With India's Super Teachers</p>
-                <button className="bg-white text-red-900 font-bold px-4 py-2 rounded w-full hover:bg-gray-100 transition">
-                  Join SuperCoaching
-                </button>
-              </div>
+              {bannerImage ? (
+                <div className="rounded-lg shadow-md overflow-hidden">
+                  <img src={bannerImage} alt="Promo" className="w-full h-auto object-cover" />
+                </div>
+              ) : (
+                <div className={`bg-gradient-to-br ${promoBgColor ? promoBgColor : 'from-red-900 to-black'} rounded-lg p-6 text-white text-center shadow-md`}>
+                  <h3 className="text-2xl font-bold mb-2">{promoTitle ? promoTitle : `Crack ${exam.title}`}</h3>
+                  <p className="text-sm text-gray-300 mb-4">{promoDescription ? promoDescription : "With India's Super Teachers"}</p>
+                  {promoLink ? (
+                    <Link to={promoLink} className="bg-white text-gray-900 font-bold px-4 py-2 rounded w-full hover:bg-gray-100 transition block text-center">
+                      {promoButtonText ? promoButtonText : "Join SuperCoaching"}
+                    </Link>
+                  ) : (
+                    <button className="bg-white text-gray-900 font-bold px-4 py-2 rounded w-full hover:bg-gray-100 transition">
+                      {promoButtonText ? promoButtonText : "Join SuperCoaching"}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Important Dates Card */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -798,6 +839,29 @@ export default function ExamDetails() {
                   </div>
                 </div>
               </div>
+
+              {/* NEW: Subpages (Quick Links to Specific Pages) */}
+              {subpages.length > 0 && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
+                    <h3 className="font-bold text-blue-900 flex items-center gap-2 uppercase text-[10px] tracking-widest">
+                      <Layers size={16} /> Important Exam Pages
+                    </h3>
+                  </div>
+                  <div className="p-2">
+                    {subpages.map((sub, idx) => (
+                      <Link 
+                        key={sub.id} 
+                        to={`/exams/${slugify(sub.title)}`} 
+                        className="flex items-center justify-between p-4 hover:bg-blue-50/50 rounded-xl transition group border-b border-gray-50 last:border-0"
+                      >
+                        <span className="font-bold text-gray-700 text-[13px] group-hover:text-blue-600 transition-colors uppercase tracking-tight">{sub.title}</span>
+                        <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Official Links */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

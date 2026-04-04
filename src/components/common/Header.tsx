@@ -39,7 +39,8 @@ interface MegaMenuCategory {
   menu_type: string;
   category_title: string;
   icon_name: string;
-  items: string[];
+  category_image?: string;
+  items: any[];
   order_index: number;
 }
 
@@ -69,52 +70,71 @@ function MegaMenuDropdown({ categories, basePath, offsetClass = 'left-0' }: { ca
 
   return (
     <div 
-      className={`absolute top-full ${offsetClass} bg-white shadow-xl border border-gray-200 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 flex overflow-hidden`}
+      className={`absolute top-full ${offsetClass} bg-white shadow-[0_15px_50px_-15px_rgba(0,0,0,0.15)] border border-gray-100 rounded-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 flex overflow-hidden translate-y-2 group-hover:translate-y-0`}
       onMouseLeave={() => setActiveCategory(null)}
     >
-      {/* Left Column */}
-      <div className="w-60 bg-white py-2 flex-shrink-0">
+      {/* Left Column (Categories) */}
+      <div className="w-64 bg-gray-50/50 py-3 flex-shrink-0 border-r border-gray-100">
         {categories.filter(cat => cat.items?.length > 0).map(cat => (
           <div
             key={cat.id}
             onMouseEnter={() => setActiveCategory(cat.id)}
-            className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors ${activeCategory === cat.id ? 'bg-gray-50 border-l-4 border-[#15b86c]' : 'hover:bg-gray-50 border-l-4 border-transparent'}`}
+            className={`flex items-center justify-between px-4 py-3.5 cursor-pointer transition-all duration-200 ${activeCategory === cat.id ? 'bg-white shadow-[2px_0_10px_rgba(0,0,0,0.02)]' : 'hover:bg-gray-100/50'}`}
           >
-            <div className="flex items-center gap-3 text-gray-700 font-semibold text-sm">
-              <span className={activeCategory === cat.id ? 'text-[#15b86c]' : 'text-gray-500'}>{cat.icon}</span>
-              {cat.id}
+            <div className="flex items-center gap-3 text-gray-700 font-bold text-[13px] tracking-tight">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${activeCategory === cat.id ? 'bg-[#15b86c]/10 text-[#15b86c]' : 'bg-white shadow-sm text-gray-400'}`}>
+                {cat.category_image ? (
+                  <img src={cat.category_image} className="w-5 h-5 object-contain" />
+                ) : (
+                  cat.icon
+                )}
+              </div>
+              <span className={activeCategory === cat.id ? 'text-[#15b86c]' : 'text-gray-600'}>{cat.category_title}</span>
             </div>
-            <div className="flex items-center gap-2 text-gray-400">
-              <ChevronRight size={14} />
-              <Plus size={14} />
-            </div>
+            <ChevronRight size={14} className={`transition-transform duration-200 ${activeCategory === cat.id ? 'text-[#15b86c] translate-x-1' : 'text-gray-300'}`} />
           </div>
         ))}
       </div>
 
-      {/* Right Column */}
+      {/* Right Column (Items) */}
       {activeCategory && (
-        <div className="w-[400px] bg-slate-50 border-l border-gray-200 p-6 flex-shrink-0">
+        <div className="w-[500px] bg-white p-6 flex-shrink-0 animate-in fade-in slide-in-from-left-2 duration-300">
+          <div className="mb-4">
+            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Available Programs</h4>
+            <div className="h-1 w-8 bg-[#15b86c] rounded-full"></div>
+          </div>
+          
           {categories.find(c => c.id === activeCategory)?.items?.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               {categories.find(c => c.id === activeCategory)?.items.map((item: any) => {
                 const label = (typeof item === 'string' ? item : item?.label) || '';
-                const cleanLabel = label.replace(/<[^>]*>?/gm, '');
+                const path = typeof item === 'object' ? item?.path : `${basePath}?search=${encodeURIComponent(label)}`;
+                
                 return (
-                  <Link to={`${basePath}?search=${encodeURIComponent(cleanLabel)}`} key={label} className="flex items-center gap-3 bg-white border border-gray-200 p-3 rounded-lg hover:border-[#15b86c] hover:shadow-md transition group/item">
-                    <div className="bg-red-50 p-1.5 rounded-md text-red-500 group-hover/item:bg-[#15b86c]/10 group-hover/item:text-[#15b86c] transition-colors flex-shrink-0">
-                      <Award size={16} />
+                  <Link 
+                    to={path} 
+                    key={label} 
+                    className="flex items-center gap-3 bg-white border border-gray-100 p-3 rounded-xl hover:border-[#15b86c] hover:shadow-[0_8px_20px_-8px_rgba(21,184,108,0.2)] transition-all duration-300 group/item hover:-translate-y-0.5"
+                  >
+                    <div className="w-10 h-10 bg-gray-50 rounded-lg group-hover/item:bg-[#15b86c]/5 transition-colors flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-50">
+                      {item.image ? (
+                        <img src={item.image} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="text-gray-400 group-hover/item:text-[#15b86c] transition-colors">
+                          {getIcon(item.icon_name || 'Award')}
+                        </div>
+                      )}
                     </div>
-                    <span className="text-sm font-semibold text-gray-700 group-hover/item:text-[#15b86c] transition-colors truncate">
-                      {cleanLabel}
+                    <span className="text-sm font-bold text-gray-700 group-hover/item:text-[#15b86c] transition-colors truncate">
+                      {label}
                     </span>
                   </Link>
                 );
               })}
             </div>
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-              No items found
+            <div className="flex items-center justify-center h-48 text-gray-400 text-sm italic">
+              No items listed yet
             </div>
           )}
         </div>
@@ -147,7 +167,9 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     return megaMenuData
       .filter(item => item.menu_type === type)
       .map(item => ({
-        id: item.category_title,
+        id: item.id,
+        category_title: item.category_title,
+        category_image: item.category_image,
         icon: getIcon(item.icon_name),
         items: item.items || []
       }));

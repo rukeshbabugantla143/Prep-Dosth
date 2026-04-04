@@ -2,17 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import { slugify } from '../utils';
-import { Building2, Users, GraduationCap, Calendar, IndianRupee, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, PlayCircle, Download, Bell, Link as LinkIcon, AlertCircle, Info } from 'lucide-react';
+import { Building2, Users, GraduationCap, Calendar, IndianRupee, FileText, ExternalLink, ArrowLeft, Clock, ChevronRight, CheckCircle2, PlayCircle, Download, Bell, Link as LinkIcon, AlertCircle, Info, Layers } from 'lucide-react';
 import { format } from 'date-fns';
 import FAQSection from '../components/FAQSection';
 import IconList from '../components/common/IconList';
-
+import SEO from '../components/common/SEO';
 export default function JobDetails() {
   const { slug } = useParams();
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [importantLinks, setImportantLinks] = useState<any[]>([]);
+  const [parentJob, setParentJob] = useState<any>(null);
+  const [subpages, setSubpages] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchJob = async () => {
@@ -20,15 +22,35 @@ export default function JobDetails() {
       if (data) {
         const job = data.find(j => slugify(j.title) === slug);
         setJob(job);
-        if (job) {
-          // Fetch important links for this job
-          const { data: linksData } = await supabase
-            .from('important_links')
-            .select('*')
-            .eq('job_id', job.id)
-            .order('order_index', { ascending: true });
-          if (linksData) setImportantLinks(linksData);
-        }
+          if (job) {
+            // Fetch important links for this job
+            const { data: linksData } = await supabase
+              .from('important_links')
+              .select('*')
+              .eq('job_id', job.id)
+              .order('order_index', { ascending: true });
+            if (linksData) setImportantLinks(linksData);
+
+            // NEW: Fetch parent job if this is a subpage
+            if (job.parent_id) {
+              const { data: parentData } = await supabase
+                .from('jobs')
+                .select('id, title')
+                .eq('id', job.parent_id)
+                .single();
+              if (parentData) setParentJob(parentData);
+            } else {
+              setParentJob(null);
+            }
+
+            // NEW: Fetch subpages if this is a main page
+            const { data: subData } = await supabase
+              .from('jobs')
+              .select('id, title')
+              .eq('parent_id', job.id)
+              .eq('is_subpage', true);
+            if (subData) setSubpages(subData);
+          }
       }
       if (error) console.error("Error fetching job details:", error);
       setLoading(false);
@@ -36,8 +58,8 @@ export default function JobDetails() {
     fetchJob();
   }, [slug]);
 
-  const { toc, sections, status, customDates, officialLinks, notificationLinks, logoUrl } = React.useMemo(() => {
-    if (!job?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [], logoUrl: '' };
+  const { toc, sections, status, customDates, officialLinks, notificationLinks, logoUrl, promoTitle, promoDescription, promoButtonText, promoLink, promoBgColor, bannerImage } = React.useMemo(() => {
+    if (!job?.description) return { toc: [], sections: [], status: 'Confirmed', customDates: [], officialLinks: [], notificationLinks: [], logoUrl: '', promoTitle: '', promoDescription: '', promoButtonText: '', promoLink: '', promoBgColor: '', bannerImage: '' };
     
     const generatedToc: { id: string, text: string }[] = [];
     const generatedSections: any[] = [];
@@ -46,6 +68,12 @@ export default function JobDetails() {
     let jobOfficialLinks: { label: string, url: string, color?: string }[] = [];
     let jobNotificationLinks: { label: string, url: string, color?: string }[] = [];
     let jobLogoUrl = '';
+    let jobPromoTitle = '';
+    let jobPromoDescription = '';
+    let jobPromoButtonText = '';
+    let jobPromoLink = '';
+    let jobPromoBgColor = '';
+    let jobBannerImage = '';
 
     try {
       const trimmedDesc = job.description.trim();
@@ -57,6 +85,12 @@ export default function JobDetails() {
           jobStatus = parsedData.status || 'Confirmed';
           jobCustomDates = parsedData.important_dates || [];
           jobLogoUrl = parsedData.logo_url || '';
+          jobPromoTitle = parsedData.promo_title || parsedData.banner_text || '';
+          jobPromoDescription = parsedData.promo_description || '';
+          jobPromoButtonText = parsedData.promo_button_text || '';
+          jobPromoLink = parsedData.promo_link || '';
+          jobPromoBgColor = parsedData.promo_bg_color || 'from-red-900 to-black';
+          jobBannerImage = parsedData.banner_image || '';
           
           // Handle multiple links
           if (parsedData.official_links) {
@@ -93,7 +127,13 @@ export default function JobDetails() {
           customDates: jobCustomDates,
           officialLinks: jobOfficialLinks,
           notificationLinks: jobNotificationLinks,
-          logoUrl: jobLogoUrl
+          logoUrl: jobLogoUrl,
+          promoTitle: jobPromoTitle,
+          promoDescription: jobPromoDescription,
+          promoButtonText: jobPromoButtonText,
+          promoLink: jobPromoLink,
+          promoBgColor: jobPromoBgColor,
+          bannerImage: jobBannerImage
         };
       }
     } catch (e) {
@@ -160,7 +200,13 @@ export default function JobDetails() {
       customDates: [],
       officialLinks: job.applyLink ? [{ label: 'Apply Online', url: job.applyLink }] : [],
       notificationLinks: job.pdfLink ? [{ label: 'Notification PDF', url: job.pdfLink }] : [],
-      logoUrl: ''
+      logoUrl: '',
+      promoTitle: '',
+      promoDescription: '',
+      promoButtonText: '',
+      promoLink: '',
+      promoBgColor: '',
+      bannerImage: ''
     };
   }, [job?.description, job?.applyLink, job?.pdfLink]);
 
@@ -174,6 +220,10 @@ export default function JobDetails() {
       case 'blue':
       default: return 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-100';
     }
+  };
+
+  const handleDownloadPDF = () => {
+    window.print();
   };
 
   if (loading) {
@@ -206,14 +256,24 @@ export default function JobDetails() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO 
+        title={job.title} 
+        description={`${job.title} Notification. Department: ${job.department || 'N/A'}, Vacancies: ${job.posts || 'N/A'}, Qualification: ${job.qualification || 'N/A'}. Check eligibility and apply now.`}
+      />
       {/* Breadcrumbs */}
-      <div className="bg-white border-b border-gray-200 py-3">
+      <div className="bg-white border-b border-gray-200 py-3 print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center text-sm text-gray-500">
-            <Link to="/" className="hover:text-[#15b86c]">Home</Link>
-            <ChevronRight size={16} className="mx-2" />
-            <Link to="/jobs" className="hover:text-[#15b86c]">Jobs</Link>
-            <ChevronRight size={16} className="mx-2" />
+          <div className="flex items-center text-sm text-gray-500 overflow-x-auto whitespace-nowrap scrollbar-hide py-1">
+            <Link to="/" className="hover:text-[#15b86c] shrink-0">Home</Link>
+            <ChevronRight size={14} className="mx-2 shrink-0" />
+            <Link to="/jobs" className="hover:text-[#15b86c] shrink-0">Jobs</Link>
+            {parentJob && (
+              <>
+                <ChevronRight size={14} className="mx-2 shrink-0" />
+                <Link to={`/jobs/${slugify(parentJob.title)}`} className="hover:text-[#15b86c] shrink-0 truncate max-w-[150px] md:max-w-xs">{parentJob.title}</Link>
+              </>
+            )}
+            <ChevronRight size={14} className="mx-2 shrink-0" />
             <span className="text-gray-900 font-medium truncate">{job.title}</span>
           </div>
         </div>
@@ -224,8 +284,16 @@ export default function JobDetails() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
           <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
             <div className="flex-1">
+              {parentJob && (
+                <Link 
+                  to={`/jobs/${slugify(parentJob.title)}`}
+                  className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold mb-4 hover:bg-blue-100 transition-colors border border-blue-100 uppercase tracking-wider"
+                >
+                  <ArrowLeft size={12} /> Part of {parentJob.title}
+                </Link>
+              )}
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight">
-                {job.title} Notification, Exam Date Out, Vacancy, Selection and Eligibility Criteria
+                {job.title}
               </h1>
               <div className="flex flex-wrap gap-4">
                 {job.applyLink && (
@@ -238,16 +306,13 @@ export default function JobDetails() {
                     Get Started for Free
                   </a>
                 )}
-                {job.pdfLink && (
-                  <a 
-                    href={job.pdfLink.startsWith('http') ? job.pdfLink : `https://${job.pdfLink}`} 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="bg-white text-[#15b86c] border border-[#15b86c] px-6 py-2.5 rounded font-medium hover:bg-green-50 transition flex items-center gap-2"
-                  >
-                    <Download size={18} /> Download as PDF
-                  </a>
-                )}
+                <button 
+                  onClick={handleDownloadPDF}
+                  className="bg-white text-[#15b86c] border border-[#15b86c] px-6 py-2.5 rounded font-medium hover:bg-green-50 transition flex items-center gap-2 print:hidden"
+                >
+                  <Download size={18} />
+                  Download as PDF
+                </button>
               </div>
             </div>
             <div className="hidden md:block w-64 shrink-0">
@@ -258,7 +323,7 @@ export default function JobDetails() {
       </div>
 
       {/* Sticky Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-[64px] z-40 shadow-sm">
+      <div className="bg-white border-b border-gray-200 sticky top-[64px] z-40 shadow-sm print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8 overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => (
@@ -280,8 +345,14 @@ export default function JobDetails() {
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <div id="job-content-pdf" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative bg-gray-50">
+        
+        {/* Watermark for PDF Export */}
+        <div className="fixed inset-0 pointer-events-none z-0 flex justify-center items-center opacity-10 overflow-hidden hidden print:flex">
+          <img src="https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png" alt="Watermark" className="w-[60%] max-w-[500px] object-contain" referrerPolicy="no-referrer" />
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-8 relative z-10">
           
           {/* Left Column (Content) */}
           <div className="lg:w-2/3 space-y-6">
@@ -462,16 +533,29 @@ export default function JobDetails() {
           </div>
 
           {/* Right Column (Sidebar) */}
-          <div className="lg:w-1/3">
+          <div className="lg:w-1/3 print:hidden">
             <div className="sticky top-32 space-y-6 self-start">
               {/* Promo Banner */}
-              <div className="bg-gradient-to-br from-red-900 to-black rounded-lg p-6 text-white text-center shadow-md">
-                <h3 className="text-2xl font-bold mb-2">Crack {job.title}</h3>
-                <p className="text-sm text-gray-300 mb-4">With India's Super Teachers</p>
-                <button className="bg-white text-red-900 font-bold px-4 py-2 rounded w-full hover:bg-gray-100 transition">
-                  Join SuperCoaching
-                </button>
-              </div>
+              {/* Promo Banner */}
+              {bannerImage ? (
+                <div className="rounded-lg shadow-md overflow-hidden">
+                  <img src={bannerImage} alt="Promo" className="w-full h-auto object-cover" />
+                </div>
+              ) : (
+                <div className={`bg-gradient-to-br ${promoBgColor ? promoBgColor : 'from-red-900 to-black'} rounded-lg p-6 text-white text-center shadow-md`}>
+                  <h3 className="text-2xl font-bold mb-2">{promoTitle ? promoTitle : `Crack ${job.title}`}</h3>
+                  <p className="text-sm text-gray-300 mb-4">{promoDescription ? promoDescription : "With India's Super Teachers"}</p>
+                  {promoLink ? (
+                    <Link to={promoLink} className="bg-white text-gray-900 font-bold px-4 py-2 rounded w-full hover:bg-gray-100 transition block text-center">
+                      {promoButtonText ? promoButtonText : "Join SuperCoaching"}
+                    </Link>
+                  ) : (
+                    <button className="bg-white text-gray-900 font-bold px-4 py-2 rounded w-full hover:bg-gray-100 transition">
+                      {promoButtonText ? promoButtonText : "Join SuperCoaching"}
+                    </button>
+                  )}
+                </div>
+              )}
 
             {/* Important Dates Card */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -544,6 +628,29 @@ export default function JobDetails() {
                 </div>
               </div>
             </div>
+
+            {/* NEW: Subpages (Quick Links to Specific Pages) */}
+            {subpages.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
+                  <h3 className="font-bold text-blue-900 flex items-center gap-2 uppercase text-[10px] tracking-widest">
+                    <Layers size={16} /> Important Job Pages
+                  </h3>
+                </div>
+                <div className="p-2">
+                  {subpages.map((sub, idx) => (
+                    <Link 
+                      key={sub.id} 
+                      to={`/jobs/${slugify(sub.title)}`} 
+                      className="flex items-center justify-between p-4 hover:bg-blue-50/50 rounded-xl transition group border-b border-gray-50 last:border-0"
+                    >
+                      <span className="font-bold text-gray-700 text-[13px] group-hover:text-blue-600 transition-colors uppercase tracking-tight">{sub.title}</span>
+                      <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Quick Overview Card */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

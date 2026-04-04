@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Save, X, Briefcase, GraduationCap, Bell, Target } from "lucide-react";
+import { Edit, Trash2, Save, X, Briefcase, GraduationCap, Bell, Target, Plus } from "lucide-react";
 import ConfirmationModal from "../../components/ConfirmationModal";
 
 type CategorySource = 'jobs' | 'exams' | 'notifications' | 'tests';
@@ -14,6 +14,7 @@ interface CategoryItem {
 export default function ManageCategories() {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [editingCategory, setEditingCategory] = useState<{ oldName: string; newName: string; source: CategorySource } | null>(null);
+  const [newCatName, setNewCatName] = useState("");
   const [loading, setLoading] = useState(true);
 
   const [confirmModal, setConfirmModal] = useState<{
@@ -52,9 +53,18 @@ export default function ManageCategories() {
         if (n.type) notifCats[n.type] = (notifCats[n.type] || 0) + 1;
       });
 
+      // Fetch Master Categories from test_categories table
+      const { data: masterTestCats } = await supabase.from("test_categories").select("name");
+      const masterTestSet = new Set(masterTestCats?.map(c => c.name) || []);
+
       // Fetch from Tests
       const { data: testsData } = await supabase.from("tests").select("category");
+      
       const testCats: { [key: string]: number } = {};
+      // Initialize with master categories (0 count)
+      masterTestSet.forEach(name => testCats[name] = 0);
+      
+      // Merge with actual test counts
       testsData?.forEach(t => {
         if (t.category) testCats[t.category] = (testCats[t.category] || 0) + 1;
       });
@@ -86,16 +96,53 @@ export default function ManageCategories() {
     const column = source === 'jobs' ? 'department' : source === 'exams' ? 'category' : source === 'tests' ? 'category' : 'type';
 
     try {
-      const { error } = await supabase
+      // 1. Update items in the related source table
+      const { error: updateError } = await supabase
         .from(table)
         .update({ [column]: newName })
         .eq(column, oldName);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // 2. If it's a test category, also update the master table
+      if (source === 'tests') {
+        const { error: masterError } = await supabase
+          .from("test_categories")
+          .update({ name: newName })
+          .eq("name", oldName);
+        if (masterError) console.error("Error updating master test category:", masterError);
+      }
+
       setEditingCategory(null);
       fetchCategories();
     } catch (error: any) {
       alert("Error renaming category: " + error.message);
+    }
+  };
+
+  const handleCreateCategory = async (source: CategorySource) => {
+    if (!newCatName.trim()) return;
+
+    try {
+      if (source === 'tests') {
+        const { error } = await supabase
+          .from("test_categories")
+          .insert({ name: newCatName.trim() });
+        
+        if (error) {
+          if (error.code === '23505') throw new Error("Category already exists");
+          throw error;
+        }
+      } else {
+        // For other sources, we don't have master tables yet, so we just alert
+        alert("Proactive creation is only enabled for Mock Tests currently.");
+        return;
+      }
+
+      setNewCatName("");
+      fetchCategories();
+    } catch (error: any) {
+      alert("Error creating category: " + error.message);
     }
   };
 
@@ -109,12 +156,23 @@ export default function ManageCategories() {
         const column = cat.source === 'jobs' ? 'department' : cat.source === 'exams' ? 'category' : cat.source === 'tests' ? 'category' : 'type';
 
         try {
-          const { error } = await supabase
+          // 1. Update items to Uncategorized
+          const { error: updateError } = await supabase
             .from(table)
             .update({ [column]: 'Uncategorized' })
             .eq(column, cat.name);
 
-          if (error) throw error;
+          if (updateError) throw updateError;
+
+          // 2. If it's a test category, also remove from master table
+          if (cat.source === 'tests') {
+            const { error: masterError } = await supabase
+              .from("test_categories")
+              .delete()
+              .eq("name", cat.name);
+            if (masterError) console.error("Error deleting from master test categories:", masterError);
+          }
+
           fetchCategories();
         } catch (error: any) {
           alert("Error deleting category: " + error.message);
@@ -179,6 +237,10 @@ export default function ManageCategories() {
           editingCategory={editingCategory}
           setEditingCategory={setEditingCategory}
           handleRename={handleRename}
+          source="tests"
+          newCatName={newCatName}
+          setNewCatName={setNewCatName}
+          onCreate={handleCreateCategory}
         />
       </div>
 
@@ -193,14 +255,39 @@ export default function ManageCategories() {
   );
 }
 
-function CategorySection({ title, icon, items, onEdit, onDelete, editingCategory, setEditingCategory, handleRename }: any) {
+function CategorySection({ title, icon, items, onEdit, onDelete, editingCategory, setEditingCategory, handleRename, source, newCatName, setNewCatName, onCreate }: any) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-        {icon}
-        <h2 className="font-bold text-gray-800">{title}</h2>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
+      <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {icon}
+          <h2 className="font-bold text-gray-800 text-sm uppercase tracking-tight">{title}</h2>
+        </div>
       </div>
-      <div className="divide-y divide-gray-50">
+      
+      {/* Create New Category (Only for Tests currently) */}
+      {source === 'tests' && (
+        <div className="p-4 bg-blue-50/50 border-b border-blue-100/50">
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              placeholder="Add New..."
+              value={newCatName}
+              onChange={e => setNewCatName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && onCreate(source)}
+              className="flex-1 bg-white border border-blue-100 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+            <button 
+              onClick={() => onCreate(source)}
+              className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 transition shadow-sm"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="divide-y divide-gray-50 overflow-y-auto max-h-[400px]">
         {items.length === 0 ? (
           <p className="p-4 text-center text-gray-400 text-sm">No categories found</p>
         ) : (

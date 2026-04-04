@@ -6,7 +6,7 @@ import Header from "../common/Header";
 export default function MainLayout() {
   return (
     <div className="h-screen flex flex-col bg-gray-50 font-sans overflow-hidden">
-      <div className="shrink-0 z-50">
+      <div className="shrink-0 z-50 print:hidden">
         {/* Top Bar */}
         <div className="bg-[#1d2027] text-gray-300 text-xs py-2 hidden md:block">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
@@ -26,7 +26,7 @@ export default function MainLayout() {
 
       <main id="main-content" className="flex-grow w-full overflow-y-auto">
         <Outlet />
-        <footer className="bg-[#0a0a0a] text-gray-300 pt-16 pb-8 border-t border-gray-800">
+        <footer className="bg-[#0a0a0a] text-gray-300 pt-16 pb-8 border-t border-gray-800 print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16">
             <div className="lg:col-span-2">

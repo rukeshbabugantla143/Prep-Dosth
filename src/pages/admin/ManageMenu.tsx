@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Plus, MoveUp, MoveDown } from "lucide-react";
+import { Edit, Trash2, Plus, MoveUp, MoveDown, Globe } from "lucide-react";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import { slugify } from "../../utils";
 
 interface MenuItem {
   id?: string;
@@ -16,6 +17,9 @@ export default function ManageMenu() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentItem, setCurrentItem] = useState<MenuItem>({ label: "", path: "", order_index: 0, is_active: true });
   const [loading, setLoading] = useState(true);
+  const [exams, setExams] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [isCustomPath, setIsCustomPath] = useState(false);
 
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -32,16 +36,21 @@ export default function ManageMenu() {
 
   const fetchMenuItems = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    // Fetch Menu Items
+    const { data: navData } = await supabase
       .from("navigation")
       .select("*")
       .order("order_index", { ascending: true });
-    
-    if (error) {
-      console.error("Error fetching menu items:", error);
-    } else {
-      setMenuItems(data || []);
-    }
+    if (navData) setMenuItems(navData);
+
+    // Fetch Exams for dropdown
+    const { data: examsData } = await supabase.from("exams").select("id, title").eq('is_subpage', false);
+    if (examsData) setExams(examsData);
+
+    // Fetch Jobs for dropdown
+    const { data: jobsData } = await supabase.from("jobs").select("id, title").eq('is_subpage', false);
+    if (jobsData) setJobs(jobsData);
+
     setLoading(false);
   };
 
@@ -60,6 +69,7 @@ export default function ManageMenu() {
     }
     setIsEditing(false);
     setCurrentItem({ label: "", path: "", order_index: 0, is_active: true });
+    setIsCustomPath(false);
     fetchMenuItems();
   };
 
@@ -99,12 +109,31 @@ export default function ManageMenu() {
     fetchMenuItems();
   };
 
+  const handleEdit = (item: MenuItem) => {
+    setCurrentItem(item);
+    
+    // Check if path is custom
+    const staticRoutes = ["/", "/jobs", "/exams", "/tests", "/premium", "/about", "/contact"];
+    const isStatic = staticRoutes.includes(item.path);
+    const isExam = item.path.startsWith("/exams/");
+    const isJob = item.path.startsWith("/jobs/");
+    
+    setIsCustomPath(!isStatic && !isExam && !isJob);
+    setIsEditing(true);
+  };
+
+  const handleAddNew = () => {
+    setIsEditing(true); 
+    setCurrentItem({ label: "", path: "", order_index: menuItems.length, is_active: true });
+    setIsCustomPath(false);
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Manage Navigation Menu</h1>
         <button 
-          onClick={() => { setIsEditing(true); setCurrentItem({ label: "", path: "", order_index: menuItems.length, is_active: true }); }} 
+          onClick={handleAddNew} 
           className="bg-[#15b86c] text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-[#129c5b] transition"
         >
           <Plus size={20} /> Add Menu Item
@@ -127,16 +156,86 @@ export default function ManageMenu() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-600">Path</label>
-              <input 
-                type="text" 
-                placeholder="e.g. /, /jobs, /about" 
-                value={currentItem.path} 
-                onChange={e => setCurrentItem({...currentItem, path: e.target.value})} 
-                className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-[#15b86c] outline-none" 
-                required 
-              />
+              <label className="text-sm font-semibold text-gray-600">Select Page / URL</label>
+              <select 
+                value={isCustomPath ? "custom" : currentItem.path} 
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val === "custom") {
+                    setIsCustomPath(true);
+                  } else {
+                    setIsCustomPath(false);
+                    // Find the label for the selected path if possible
+                    let newLabel = currentItem.label;
+                    
+                    // Static routes check
+                    const staticPages: any = {
+                      "/": "Home",
+                      "/jobs": "Jobs",
+                      "/exams": "Exams",
+                      "/tests": "Mock Tests",
+                      "/premium": "Premium",
+                      "/about": "About",
+                      "/contact": "Contact"
+                    };
+
+                    if (staticPages[val]) {
+                      newLabel = staticPages[val];
+                    } else if (val.startsWith("/exams/")) {
+                      const exam = exams.find(ex => `/exams/${slugify(ex.title)}` === val);
+                      if (exam) newLabel = exam.title;
+                    } else if (val.startsWith("/jobs/")) {
+                      const job = jobs.find(j => `/jobs/${slugify(j.title)}` === val);
+                      if (job) newLabel = job.title;
+                    }
+
+                    setCurrentItem({...currentItem, path: val, label: newLabel});
+                  }
+                }}
+                className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-[#15b86c] outline-none bg-white"
+              >
+                <option value="">Select a destination...</option>
+                <optgroup label="Main Pages">
+                  <option value="/">Home Page</option>
+                  <option value="/jobs">All Jobs</option>
+                  <option value="/exams">All Exams</option>
+                  <option value="/tests">Mock Tests</option>
+                  <option value="/premium">Premium Page</option>
+                  <option value="/about">About Us</option>
+                  <option value="/contact">Contact Us</option>
+                </optgroup>
+                <optgroup label="Latest Exams">
+                  {exams.slice(0, 20).map(ex => (
+                    <option key={ex.id} value={`/exams/${slugify(ex.title)}`}>{ex.title}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Latest Jobs">
+                  {jobs.slice(0, 20).map(j => (
+                    <option key={j.id} value={`/jobs/${slugify(j.title)}`}>{j.title}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Other">
+                  <option value="custom">Custom URL...</option>
+                </optgroup>
+              </select>
             </div>
+            
+            {isCustomPath && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                <label className="text-sm font-semibold text-gray-600">Custom Path / URL</label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    placeholder="e.g. /custom-page or https://..." 
+                    value={currentItem.path} 
+                    onChange={e => setCurrentItem({...currentItem, path: e.target.value})} 
+                    className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-[#15b86c] outline-none pl-10" 
+                    required 
+                  />
+                  <Globe className="absolute left-3 top-3.5 text-gray-400" size={18} />
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2 md:col-span-2">
               <input 
                 type="checkbox" 
@@ -190,7 +289,7 @@ export default function ManageMenu() {
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => { setCurrentItem(item); setIsEditing(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"><Edit size={18} /></button>
+                      <button onClick={() => handleEdit(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"><Edit size={18} /></button>
                       <button onClick={() => handleDelete(item.id!)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"><Trash2 size={18} /></button>
                     </div>
                   </td>

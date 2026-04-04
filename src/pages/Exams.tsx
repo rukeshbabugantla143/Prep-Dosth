@@ -3,7 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { slugify } from "../utils";
 import { supabase } from "../services/supabaseClient";
 import { format, differenceInDays, isBefore, startOfDay } from "date-fns";
-import { Search, Calendar, ChevronRight } from "lucide-react";
+import { Search, Calendar, ChevronRight, BookOpen, ArrowRight } from "lucide-react";
+import SEO from "../components/common/SEO";
 
 export default function Exams() {
   const [exams, setExams] = useState<any[]>([]);
@@ -48,7 +49,7 @@ export default function Exams() {
     const matchesFilter = filter === "All Exams" || exam.category === filter;
     const matchesSearch = exam.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           exam.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesSearch && !exam.is_subpage;
   });
 
   const getCleanDescription = (description: string) => {
@@ -91,6 +92,10 @@ export default function Exams() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+      <SEO 
+        title="Upcoming Exam Notifications & Dates" 
+        description="Stay updated with the latest exam notifications, registration dates, and countdowns for competitive exams including SSC, Banking, and State PSCs."
+      />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <h1 className="text-4xl font-bold text-gray-800">Exam Notifications</h1>
         
@@ -130,24 +135,64 @@ export default function Exams() {
           const daysLeft = differenceInDays(startOfDay(examDate), today);
           const isPast = isBefore(startOfDay(examDate), today);
 
+          const parsedDescription = (() => {
+            try {
+              return exam.description?.startsWith('{') ? JSON.parse(exam.description) : {};
+            } catch(e) { return {}; }
+          })();
+          const logo = parsedDescription.logo_url;
+
           return (
-            <div key={exam.id} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[200px]">
+            <div key={exam.id} className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[180px] relative group overflow-hidden">
+              {/* Badges */}
+              <div className="absolute top-3 right-3 flex flex-wrap gap-1 justify-end max-w-[60%]">
+                {parsedDescription.badges?.map((badge: any, i: number) => {
+                  const badgeText = typeof badge === 'string' ? badge : badge.text;
+                  const badgeColor = typeof badge === 'string' ? 'emerald' : badge.color;
+                  const colorClass = 
+                    badgeColor === 'emerald' ? 'bg-[#15b86c]' :
+                    badgeColor === 'ruby' ? 'bg-[#d00000]' :
+                    badgeColor === 'sky' ? 'bg-[#0ea5e9]' :
+                    badgeColor === 'amber' ? 'bg-[#f59e0b]' :
+                    badgeColor === 'violet' ? 'bg-[#8b5cf6]' : 'bg-[#15b86c]';
+                  
+                  return (
+                    <span key={i} className={`${colorClass} text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm`}>
+                      {badgeText}
+                    </span>
+                  );
+                })}
+              </div>
+
               <div className="flex-grow">
-                <h2 className="text-xl font-bold text-gray-900 mb-1">{exam.title}</h2>
-                <p className="text-gray-400 text-sm">
-                  {exam.category || 'Entrance Exam'}
-                </p>
+                <div className="flex gap-4 items-start mb-4">
+                  {logo ? (
+                    <div className="w-14 h-14 min-w-[56px] rounded-xl overflow-hidden bg-gray-50 border border-gray-100 p-1 group-hover:scale-105 transition-transform duration-300">
+                      <img src={logo} alt={exam.title} className="w-full h-full object-contain" />
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 min-w-[56px] rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 transition-transform duration-300 group-hover:scale-105">
+                      <BookOpen size={24} />
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 group-hover:text-[#15b86c] transition-colors line-clamp-2">{exam.title}</h2>
+                    <p className="text-gray-400 text-sm font-medium">
+                      {exam.category || 'Entrance Exam'}
+                    </p>
+                  </div>
+                </div>
                 
-                <div className="mt-8">
-                  <p className="text-gray-500 text-sm">
-                    {format(examDate, 'dd/MM/yyyy')}
+                <div className="mt-4 flex flex-col justify-end">
+                  <p className="text-gray-500 text-sm font-medium mb-1">
+                    Exam Date: {format(examDate, 'dd MMM yyyy')}
                   </p>
                   <div className="flex justify-between items-end">
-                    <p className={`font-bold ${isPast ? 'text-gray-400' : 'text-[#d00000]'}`}>
+                    <p className={`font-black text-lg ${isPast ? 'text-gray-400' : 'text-[#d00000]'}`}>
                       {isPast ? 'Expired' : (daysLeft === 0 ? 'Exam Today' : `${daysLeft} days left`)}
                     </p>
-                    <Link to={`/exams/${slugify(exam.title)}`} className="text-[#15b86c] font-bold text-sm">
-                      View Details
+                    <Link to={`/exams/${slugify(exam.title)}`} className="text-[#15b86c] font-black text-sm hover:underline tracking-tight flex items-center gap-1 transition-all">
+                      View Details <ArrowRight size={14} />
                     </Link>
                   </div>
                 </div>

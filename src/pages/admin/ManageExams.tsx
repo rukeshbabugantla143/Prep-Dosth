@@ -258,6 +258,12 @@ export default function ManageExams() {
   const [sections, setSections] = useState<Section[]>([]);
   const [status, setStatus] = useState('Confirmed');
   const [logoUrl, setLogoUrl] = useState('');
+  const [bannerImage, setBannerImage] = useState('');
+  const [promoTitle, setPromoTitle] = useState('');
+  const [promoDescription, setPromoDescription] = useState('');
+  const [promoButtonText, setPromoButtonText] = useState('');
+  const [promoLink, setPromoLink] = useState('');
+  const [promoBgColor, setPromoBgColor] = useState('from-red-900 to-black');
   const [importantDates, setImportantDates] = useState<{ label: string; date: string; icon?: string; status?: string }[]>([]);
   const [officialLinks, setOfficialLinks] = useState<{ label: string; url: string; color?: string }[]>([]);
   const [notificationLinks, setNotificationLinks] = useState<{ label: string; url: string; color?: string }[]>([]);
@@ -267,6 +273,11 @@ export default function ManageExams() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [allTests, setAllTests] = useState<any[]>([]);
   const [selectedTestIds, setSelectedTestIds] = useState<string[]>([]);
+  const [isSubpage, setIsSubpage] = useState(false);
+  const [parentId, setParentId] = useState<string | null>(null);
+  const [badges, setBadges] = useState<{text: string, color: string}[]>([]);
+  const [newBadge, setNewBadge] = useState('');
+  const [selectedBadgeColor, setSelectedBadgeColor] = useState('emerald');
 
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -413,9 +424,21 @@ export default function ManageExams() {
       notification_links: notificationLinks,
       youtube_videos: youtubeVideos,
       logo_url: logoUrl,
-      featured_test_ids: selectedTestIds
+      promo_title: promoTitle,
+      promo_description: promoDescription,
+      promo_button_text: promoButtonText,
+      promo_link: promoLink,
+      promo_bg_color: promoBgColor,
+      banner_image: bannerImage,
+      featured_test_ids: selectedTestIds,
+      badges: badges
     });
-    const examToSave = { ...currentExam, description: serializedDescription };
+    const examToSave = { 
+      ...currentExam, 
+      description: serializedDescription,
+      is_subpage: isSubpage,
+      parent_id: isSubpage ? parentId : null
+    };
 
     let error;
     if (examToSave.id) {
@@ -434,7 +457,15 @@ export default function ManageExams() {
     setCurrentExam({});
     setSections([]);
     setLogoUrl('');
+    setPromoTitle('');
+    setPromoDescription('');
+    setPromoButtonText('');
+    setPromoLink('');
+    setPromoBgColor('from-red-900 to-black');
+    setBannerImage('');
     setSelectedTestIds([]);
+    setBadges([]);
+    setNewBadge('');
     fetchExams();
   };
 
@@ -455,6 +486,12 @@ export default function ManageExams() {
           setStatus(parsed.status || 'Confirmed');
           setImportantDates(parsed.important_dates || []);
           setLogoUrl(parsed.logo_url || '');
+          setPromoTitle(parsed.promo_title || parsed.banner_text || '');
+          setPromoDescription(parsed.promo_description || '');
+          setPromoButtonText(parsed.promo_button_text || '');
+          setPromoLink(parsed.promo_link || '');
+          setPromoBgColor(parsed.promo_bg_color || 'from-red-900 to-black');
+          setBannerImage(parsed.banner_image || '');
           setSelectedTestIds(parsed.featured_test_ids || []);
           
           // Handle migration for official links
@@ -482,6 +519,7 @@ export default function ManageExams() {
             return v;
           });
           setYoutubeVideos(formattedVideos);
+          setBadges(parsed.badges || []);
         }
       } else if (exam.description) {
         // Fallback for legacy HTML descriptions
@@ -507,6 +545,8 @@ export default function ManageExams() {
       setOfficialLinks(exam.link ? [{ label: 'Official Website', url: exam.link, color: 'blue' }] : []);
     }
     
+    setIsSubpage(exam.is_subpage || false);
+    setParentId(exam.parent_id || null);
     setIsEditing(true);
   };
 
@@ -527,6 +567,12 @@ export default function ManageExams() {
           setStatus(parsed.status || 'Confirmed');
           setImportantDates(parsed.important_dates || []);
           setLogoUrl(parsed.logo_url || '');
+          setPromoTitle(parsed.promo_title || parsed.banner_text || '');
+          setPromoDescription(parsed.promo_description || '');
+          setPromoButtonText(parsed.promo_button_text || '');
+          setPromoLink(parsed.promo_link || '');
+          setPromoBgColor(parsed.promo_bg_color || 'from-red-900 to-black');
+          setBannerImage(parsed.banner_image || '');
           setSelectedTestIds(parsed.featured_test_ids || []);
           
           // Handle migration for official links
@@ -553,6 +599,7 @@ export default function ManageExams() {
             return v;
           });
           setYoutubeVideos(formattedVideos);
+          setBadges(parsed.badges || []);
         }
       } else if (exam.description) {
         setSections([{
@@ -606,7 +653,16 @@ export default function ManageExams() {
     setOfficialLinks([{ label: 'Official Website', url: '', color: 'blue' }]);
     setNotificationLinks([{ label: 'Notification PDF', url: '', color: 'red' }]);
     setYoutubeVideos([]);
+    setLogoUrl('');
+    setPromoTitle('');
+    setPromoDescription('');
+    setPromoButtonText('');
+    setPromoLink('');
+    setPromoBgColor('from-red-900 to-black');
+    setBannerImage('');
     setSelectedTestIds([]);
+    setIsSubpage(false);
+    setParentId(null);
     setIsEditing(true);
   };
 
@@ -815,6 +871,82 @@ export default function ManageExams() {
                 onUploadSuccess={(url) => setLogoUrl(url)} 
               />
             </div>
+
+            {/* NEW: Subpage Configuration */}
+            <div className="md:col-span-2 p-6 bg-blue-50/50 rounded-2xl border border-blue-100/50 space-y-4">
+              <div className="flex items-center gap-3">
+                <input 
+                  type="checkbox" 
+                  id="isSubpage"
+                  checked={isSubpage}
+                  onChange={(e) => setIsSubpage(e.target.checked)}
+                  className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="isSubpage" className="text-sm font-bold text-gray-800 cursor-pointer">
+                  This is a Subpage (e.g. Syllabus, Admit Card, Answer Key)
+                </label>
+              </div>
+              
+              {isSubpage && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                  <label className="block text-xs font-black uppercase text-gray-400 tracking-widest">Select Parent Notification</label>
+                  <select 
+                    value={parentId || ""} 
+                    onChange={(e) => setParentId(e.target.value || null)}
+                    className="w-full p-3 border-2 border-white bg-white rounded-xl text-sm font-bold focus:border-blue-400 focus:ring-4 focus:ring-blue-100 outline-none transition-all shadow-sm"
+                    required={isSubpage}
+                  >
+                    <option value="">Select Main Exam...</option>
+                    {exams.filter(e => !e.is_subpage && e.id !== currentExam.id).map(exam => (
+                      <option key={exam.id} value={exam.id}>{exam.title}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] font-medium text-blue-600/70 italic">
+                    * Subpages will be hidden from the main list and can be used as "Important Links" on the parent page.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="md:col-span-2 space-y-4 bg-yellow-50 p-6 rounded-xl border border-yellow-200">
+              <h3 className="text-lg font-bold text-yellow-800">Promo Banner / Ad Config</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-500 uppercase">Promo Title</label>
+                  <input type="text" placeholder="e.g. Crack AP ECET" value={promoTitle} onChange={e => setPromoTitle(e.target.value)} className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-yellow-500 outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-500 uppercase">Promo Description</label>
+                  <input type="text" placeholder="e.g. With India's Super Teachers" value={promoDescription} onChange={e => setPromoDescription(e.target.value)} className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-yellow-500 outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-500 uppercase">Button Text</label>
+                  <input type="text" placeholder="e.g. Join SuperCoaching" value={promoButtonText} onChange={e => setPromoButtonText(e.target.value)} className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-yellow-500 outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-500 uppercase">Button Link</label>
+                  <input type="text" placeholder="e.g. /tests" value={promoLink} onChange={e => setPromoLink(e.target.value)} className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-yellow-500 outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-500 uppercase">Background Color</label>
+                  <select value={promoBgColor} onChange={e => setPromoBgColor(e.target.value)} className="w-full p-2 border rounded text-sm focus:ring-1 focus:ring-yellow-500 outline-none bg-white">
+                    <option value="from-red-900 to-black">Dark Red (Default)</option>
+                    <option value="from-blue-900 to-blue-700">Deep Blue</option>
+                    <option value="from-green-900 to-green-700">Forest Green</option>
+                    <option value="from-purple-900 to-purple-700">Royal Purple</option>
+                    <option value="from-orange-600 to-orange-400">Vibrant Orange</option>
+                    <option value="from-gray-900 to-gray-800">Slate Black</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2 mt-2">
+                  <label className="text-xs font-bold text-gray-500 uppercase block mb-1">OR Upload Custom Image (Overrides all text configs above)</label>
+                  <ImageUpload 
+                    label="Upload Banner Thumbnail" 
+                    currentImage={bannerImage} 
+                    onUploadSuccess={(url) => setBannerImage(url)} 
+                  />
+                </div>
+              </div>
+            </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">Category</label>
               <div className="flex gap-2">
@@ -845,16 +977,103 @@ export default function ManageExams() {
               <input type="date" placeholder="Date" value={currentExam.date ? new Date(currentExam.date).toISOString().split('T')[0] : ""} onChange={e => setCurrentExam({...currentExam, date: e.target.value})} className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" required />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Exam Status</label>
-              <select 
-                value={status} 
-                onChange={e => setStatus(e.target.value)}
-                className="border p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-              >
-                <option value="Confirmed">Confirmed</option>
-                <option value="Expected">Expected</option>
-              </select>
+            <div className="space-y-4">
+              <label className="block text-sm font-bold text-gray-700">Notification Badges</label>
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                {/* Active Badges */}
+                <div className="flex flex-wrap gap-2">
+                  {badges.map((badge, index) => (
+                    <span 
+                      key={index} 
+                      className={`${
+                        badge.color === 'emerald' ? 'bg-[#15b86c]' :
+                        badge.color === 'ruby' ? 'bg-[#d00000]' :
+                        badge.color === 'sky' ? 'bg-[#0ea5e9]' :
+                        badge.color === 'amber' ? 'bg-[#f59e0b]' :
+                        badge.color === 'violet' ? 'bg-[#8b5cf6]' : 'bg-gray-600'
+                      } text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 animate-in zoom-in-50 shadow-sm`}
+                    >
+                      {badge.text}
+                      <button type="button" onClick={() => setBadges(badges.filter((_, i) => i !== index))} className="hover:text-white/70 transition-colors">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                  {badges.length === 0 && <p className="text-xs text-gray-400 italic">No badges added. They will appear on the card.</p>}
+                </div>
+
+                {/* Color Selection & Input Area */}
+                <div className="space-y-3 pt-2 border-t border-gray-200">
+                  <div className="flex items-center gap-4">
+                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Select Color:</span>
+                    <div className="flex gap-2">
+                      {[
+                        { id: 'emerald', bg: 'bg-[#15b86c]' },
+                        { id: 'ruby', bg: 'bg-[#d00000]' },
+                        { id: 'sky', bg: 'bg-[#0ea5e9]' },
+                        { id: 'amber', bg: 'bg-[#f59e0b]' },
+                        { id: 'violet', bg: 'bg-[#8b5cf6]' }
+                      ].map(color => (
+                        <button
+                          key={color.id}
+                          type="button"
+                          onClick={() => setSelectedBadgeColor(color.id)}
+                          className={`w-6 h-6 rounded-full ${color.bg} transition-all ${selectedBadgeColor === color.id ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'opacity-60 hover:opacity-100'}`}
+                          title={`Select ${color.id} color`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Custom badge label..." 
+                      value={newBadge}
+                      onChange={e => setNewBadge(e.target.value)}
+                      className="flex-grow p-3 border-2 border-white bg-white rounded-xl text-sm font-bold shadow-sm outline-none focus:border-blue-400 transition-all"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        if (newBadge.trim() && !badges.some(b => b.text === newBadge.trim())) {
+                          setBadges([...badges, { text: newBadge.trim(), color: selectedBadgeColor }]);
+                          setNewBadge('');
+                        }
+                      }}
+                      className="bg-gray-900 text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-gray-800 transition active:scale-95"
+                    >
+                      Add Badge
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Add Badges */}
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                  <span className="text-[10px] font-black uppercase text-gray-400 w-full mb-1 tracking-widest">Quick Add Presets:</span>
+                  {[
+                    { text: 'New', color: 'emerald' },
+                    { text: 'Update', color: 'amber' },
+                    { text: 'Admit Card', color: 'sky' },
+                    { text: 'Result', color: 'emerald' },
+                    { text: 'Important', color: 'ruby' },
+                    { text: 'Hall Ticket', color: 'sky' }
+                  ].map(b => (
+                    <button
+                      key={b.text}
+                      type="button"
+                      onClick={() => {
+                        if (!badges.some(badge => badge.text === b.text)) {
+                          setBadges([...badges, b]);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] font-black text-gray-500 hover:border-blue-400 hover:text-blue-600 transition flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Plus size={10} /> {b.text}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="md:col-span-2 space-y-4 bg-blue-50 p-6 rounded-xl border border-blue-100">
@@ -1448,7 +1667,12 @@ export default function ManageExams() {
                       {categoryExams.map(exam => (
                         <div key={exam.id} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex justify-between items-center group hover:border-blue-200 transition-all">
                           <div className="flex-1 min-w-0 mr-4">
-                            <h4 className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors truncate">{exam.title}</h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors truncate">{exam.title}</h4>
+                              {exam.is_subpage && (
+                                <span className="bg-blue-100 text-blue-600 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-blue-200">Sub</span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-3 mt-1">
                               <span className="text-xs text-gray-500 flex items-center gap-1">
                                 <Calendar size={12} /> {new Date(exam.date).toLocaleDateString()}

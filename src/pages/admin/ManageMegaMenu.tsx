@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Plus, Users, Landmark, BookOpen, GraduationCap, Train, Shield, Cpu, Activity, Briefcase, Scale, FileText, PlayCircle, Building, Map, Award } from "lucide-react";
+import { Edit, Trash2, Plus, Users, Landmark, BookOpen, GraduationCap, Train, Shield, Cpu, Activity, Briefcase, Scale, FileText, PlayCircle, Building, Map, Award, Globe } from "lucide-react";
 import ImageUpload from "../../components/common/ImageUpload";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import { slugify } from "../../utils";
 
 const ICON_OPTIONS = {
   Users: <Users size={18} />,
@@ -24,6 +25,7 @@ const ICON_OPTIONS = {
 
 interface SubItem {
   label: string;
+  path: string;
   icon_name?: string;
   image?: string;
 }
@@ -50,8 +52,12 @@ export default function ManageMegaMenu() {
     items: [],
     order_index: 0
   });
+  const [exams, setExams] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [isCustomPath, setIsCustomPath] = useState(false);
   const [newItem, setNewItem] = useState<SubItem>({
     label: '',
+    path: '',
     icon_name: 'Award',
     image: ''
   });
@@ -70,13 +76,20 @@ export default function ManageMegaMenu() {
   });
 
   const fetchMegaMenu = async () => {
-    const { data, error } = await supabase
+    // Fetch Mega Menu
+    const { data: megaData } = await supabase
       .from("mega_menu")
       .select("*")
       .order("order_index", { ascending: true });
-    
-    if (data) setMenuItems(data);
-    if (error) console.error("Error fetching mega menu:", error);
+    if (megaData) setMenuItems(megaData);
+
+    // Fetch Exams for dropdown
+    const { data: examsData } = await supabase.from("exams").select("id, title").eq('is_subpage', false);
+    if (examsData) setExams(examsData);
+
+    // Fetch Jobs for dropdown
+    const { data: jobsData } = await supabase.from("jobs").select("id, title").eq('is_subpage', false);
+    if (jobsData) setJobs(jobsData);
   };
 
   useEffect(() => {
@@ -119,12 +132,13 @@ export default function ManageMegaMenu() {
   };
 
   const addItemToCategory = () => {
-    if (newItem.label.trim()) {
+    if (newItem.label.trim() && newItem.path.trim()) {
       setCurrentItem({
         ...currentItem,
         items: [...currentItem.items, { ...newItem }]
       });
-      setNewItem({ label: '', icon_name: 'Award', image: '' });
+      setNewItem({ label: '', path: '', icon_name: 'Award', image: '' });
+      setIsCustomPath(false);
     }
   };
 
@@ -201,23 +215,105 @@ export default function ManageMegaMenu() {
             <div className="space-y-4 border-t pt-6">
               <label className="text-sm font-bold text-gray-800">Add Sub-items (Links)</label>
               <div className="bg-gray-50 p-4 rounded-xl space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500">Item Label</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. SSC CGL" 
-                      value={newItem.label} 
-                      onChange={e => setNewItem({...newItem, label: e.target.value})} 
-                      className="border p-2 rounded-lg w-full text-sm outline-none focus:ring-1 focus:ring-[#15b86c]" 
-                    />
+                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-gray-500">Destination Page</label>
+                      <select 
+                        value={isCustomPath ? "custom" : newItem.path} 
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === "custom") {
+                            setIsCustomPath(true);
+                          } else {
+                            setIsCustomPath(false);
+                            let newLabel = newItem.label;
+
+                            // Static routes
+                            const staticPages: any = {
+                              "/": "Home",
+                              "/jobs": "Jobs",
+                              "/exams": "Exams",
+                              "/tests": "Mock Tests",
+                              "/premium": "Premium",
+                              "/about": "About",
+                              "/contact": "Contact"
+                            };
+
+                            if (staticPages[val]) {
+                              newLabel = staticPages[val];
+                            } else if (val.startsWith("/exams/")) {
+                              const exam = exams.find(ex => `/exams/${slugify(ex.title)}` === val);
+                              if (exam) newLabel = exam.title;
+                            } else if (val.startsWith("/jobs/")) {
+                              const job = jobs.find(j => `/jobs/${slugify(j.title)}` === val);
+                              if (job) newLabel = job.title;
+                            }
+
+                            setNewItem({...newItem, path: val, label: newLabel});
+                          }
+                        }}
+                        className="border p-2 rounded-lg w-full text-sm outline-none bg-white focus:ring-1 focus:ring-[#15b86c]"
+                      >
+                        <option value="">Select a page...</option>
+                        <optgroup label="Main Pages">
+                          <option value="/">Home Page</option>
+                          <option value="/jobs">All Jobs View</option>
+                          <option value="/exams">All Exams View</option>
+                          <option value="/tests">Mock Tests</option>
+                          <option value="/premium">Premium Area</option>
+                          <option value="/about">About Page</option>
+                          <option value="/contact">Contact Page</option>
+                        </optgroup>
+                        <optgroup label="Latest Exams">
+                          {exams.slice(0, 15).map(ex => (
+                            <option key={ex.id} value={`/exams/${slugify(ex.title)}`}>{ex.title}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Latest Jobs">
+                          {jobs.slice(0, 15).map(j => (
+                            <option key={j.id} value={`/jobs/${slugify(j.title)}`}>{j.title}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Other">
+                          <option value="custom">Custom URL...</option>
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-gray-500">Display Label</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. SSC CGL" 
+                        value={newItem.label} 
+                        onChange={e => setNewItem({...newItem, label: e.target.value})} 
+                        className="border p-2 rounded-lg w-full text-sm outline-none focus:ring-1 focus:ring-[#15b86c]" 
+                      />
+                    </div>
                   </div>
+
+                  {isCustomPath && (
+                    <div className="md:col-span-2 space-y-1">
+                      <label className="text-xs font-semibold text-gray-500">Custom Path / External URL</label>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          placeholder="e.g. /my-custom-path or https://..." 
+                          value={newItem.path} 
+                          onChange={e => setNewItem({...newItem, path: e.target.value})} 
+                          className="border p-2 rounded-lg w-full text-sm outline-none focus:ring-1 focus:ring-[#15b86c] pl-8" 
+                        />
+                        <Globe size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500">Item Icon</label>
+                    <label className="text-xs font-semibold text-gray-500">Item Default Icon</label>
                     <select 
                       value={newItem.icon_name} 
                       onChange={e => setNewItem({...newItem, icon_name: e.target.value})} 
-                      className="border p-2 rounded-lg w-full text-sm outline-none bg-white"
+                      className="border p-2 rounded-lg w-full text-sm outline-none bg-white focus:ring-1 focus:ring-[#15b86c]"
                     >
                       {Object.keys(ICON_OPTIONS).map(icon => (
                         <option key={icon} value={icon}>{icon}</option>
@@ -231,15 +327,14 @@ export default function ManageMegaMenu() {
                       onUploadSuccess={(url) => setNewItem({...newItem, image: url})} 
                     />
                   </div>
+                  <button 
+                    type="button" 
+                    onClick={addItemToCategory}
+                    className="w-full bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-700 transition text-sm font-bold"
+                  >
+                    Add Item to List
+                  </button>
                 </div>
-                <button 
-                  type="button" 
-                  onClick={addItemToCategory}
-                  className="w-full bg-gray-800 text-white py-2 rounded-lg hover:bg-gray-700 transition text-sm font-bold"
-                >
-                  Add Item to List
-                </button>
-              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {currentItem.items.map((item, idx) => (

@@ -3,6 +3,7 @@ import { supabase } from "../services/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Clock, FileText, ChevronRight, ShieldCheck, Trophy, Folder, ArrowLeft, Users, Zap, Layers, Globe } from "lucide-react";
+import logo from "../assets/images/prepdosth-logo.png";
 
 export default function Tests() {
   const [tests, setTests] = useState<any[]>([]);
@@ -122,6 +123,7 @@ export default function Tests() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
             {categories.map(cat => {
               const testsInCategory = categoriesMap[cat];
+              const categoryLogo = testsInCategory.find((t: any) => t.logo_url)?.logo_url;
               const freeCount = testsInCategory.filter((t: any) => t.is_free).length;
               const liveCount = testsInCategory.filter((t: any) => t.is_live).length;
               const chapterCount = testsInCategory.filter((t: any) => t.test_type === "Chapter Test").length;
@@ -135,10 +137,10 @@ export default function Tests() {
                 >
                   <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-cyan-400 to-blue-600"></div>
                   {/* Header Section */}
-                  <div className="p-6 pb-4">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-400 rounded-xl flex items-center justify-center shadow-lg shadow-blue-100 group-hover:scale-110 transition-transform">
-                        <Folder className="text-white" size={24} />
+                  <div className="p-4 pb-2">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className={`w-11 h-11 bg-white border border-gray-100 rounded-xl flex items-center justify-center shadow-lg shadow-blue-100 group-hover:scale-110 transition-transform p-1`}>
+                        <img src={categoryLogo || logo} alt={cat} className="w-full h-full object-contain" />
                       </div>
                       <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-300 to-orange-400 text-white px-3 py-1 rounded-full shadow-sm">
                         <Users size={12} className="fill-white" />
@@ -148,25 +150,25 @@ export default function Tests() {
                       </div>
                     </div>
                     
-                    <h2 className="text-lg font-black text-gray-900 line-clamp-2 leading-tight min-h-[3rem] group-hover:text-blue-600 transition-colors uppercase tracking-tight">
+                    <h2 className="text-[17px] font-black text-gray-900 line-clamp-2 leading-tight min-h-[2.5rem] group-hover:text-blue-600 transition-colors uppercase tracking-tight">
                       {cat} Mock Test Series 2026
                     </h2>
                   </div>
 
                   {/* Stats Summary Section */}
-                  <div className="px-6 py-3 bg-blue-50/30 border-y border-gray-50 flex items-center justify-between">
+                  <div className="px-5 py-2 bg-blue-50/30 border-y border-gray-50 flex items-center justify-between">
                     <span className="text-[10px] font-bold text-gray-900">{testsInCategory.length} Total Tests</span>
                     <span className="text-[10px] font-bold text-green-600">{freeCount} Free Tests</span>
                   </div>
 
                   {/* Info Pills */}
-                  <div className="px-6 py-4 flex items-center gap-2">
-                    <Globe size={12} className="text-blue-400" />
+                  <div className="px-5 py-2 flex items-center gap-2">
+                    <Globe size={11} className="text-blue-400" />
                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">English, Telugu, Hindi</span>
                   </div>
 
                   {/* Bulleted List Section */}
-                  <div className="px-6 py-2 space-y-3 mb-6 bg-white flex-1">
+                  <div className="px-5 py-2 space-y-2 mb-3 bg-white flex-1">
                     {liveCount > 0 && (
                       <div className="flex items-center gap-3">
                         <div className="w-5 h-5 rounded-md bg-pink-50 flex items-center justify-center">
@@ -188,7 +190,7 @@ export default function Tests() {
                       <span className="text-[10px] font-bold text-gray-600 uppercase tracking-tight">{caCount || 0} CA Booster</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-black text-green-600 uppercase tracking-widest pl-8">+ Real-time Content</span>
+                      <span className="text-[10px] font-black text-green-600 uppercase tracking-widest pl-8 leading-none mt-1">Real-time Data</span>
                     </div>
                   </div>
 
@@ -197,7 +199,7 @@ export default function Tests() {
                     onClick={() => setSelectedCategory(cat)}
                     className="w-full bg-gradient-to-r from-[#0ea5e9] via-[#38bdf8] to-[#0ea5e9] bg-[length:200%_100%] hover:bg-right text-white py-4 font-black uppercase text-[11px] tracking-widest transition-all duration-500 active:scale-95 shadow-inner"
                   >
-                    View Test Series
+                    View All Tests
                   </button>
                 </div>
               )

@@ -2,9 +2,10 @@ import React, { useState, useEffect, Suspense, lazy, useMemo } from "react";
 import { supabase } from "../services/supabaseClient";
 import { Link, useNavigate } from "react-router-dom";
 import { slugify } from "../utils";
-import { Search, Users, Award, BookOpen, PlayCircle, ChevronRight, CheckCircle2, FileText, Clock, Calendar, Video } from "lucide-react";
+import { Search, Users, Award, BookOpen, PlayCircle, ChevronRight, CheckCircle2, FileText, Clock, Calendar, Video, ArrowRight } from "lucide-react";
 import { CardSkeleton, CategorySkeleton, Skeleton } from "../components/common/Skeleton";
 import { format, differenceInDays, isBefore, startOfDay } from "date-fns";
+import SEO from "../components/common/SEO";
 
 export default function Home() {
   const [tests, setTests] = useState<any[]>([]);
@@ -60,15 +61,15 @@ export default function Home() {
       // Fetch other data in parallel
       const [testsRes, jobsRes, examsRes] = await Promise.all([
         supabase.from("tests").select("*").limit(4),
-        supabase.from("jobs").select("*").limit(4),
-        supabase.from("exams").select("id, category"),
+        supabase.from("jobs").select("*").eq('is_subpage', false).limit(4),
+        supabase.from("exams").select("id, category").eq('is_subpage', false),
       ]);
 
       if (testsRes.data) setTests(testsRes.data);
       if (jobsRes.data) setJobs(jobsRes.data);
       if (examsRes.data) setAllExams(examsRes.data);
       
-      const { data: latestExamsData } = await supabase.from("exams").select("*").order('date', { ascending: false }).limit(3);
+      const { data: latestExamsData } = await supabase.from("exams").select("*").eq('is_subpage', false).order('date', { ascending: false }).limit(3);
       if (latestExamsData) setLatestExams(latestExamsData);
       setLoading(false);
     };
@@ -123,6 +124,10 @@ export default function Home() {
 
   return (
     <div className="w-full font-sans">
+      <SEO 
+        title="Home" 
+        description="PrepDosth - Your ultimate destination for Exam Preparation, Job Notifications, and Mock Tests in Telangana and Andhra Pradesh."
+      />
       {/* Hero Section */}
       {heroes.length > 0 ? (
         <section className="relative w-full overflow-hidden h-[40vh] sm:h-[50vh] md:h-[60vh] lg:h-[70vh] xl:h-[80vh]">
@@ -215,24 +220,64 @@ export default function Home() {
               const daysLeft = differenceInDays(startOfDay(examDate), today);
               const isPast = isBefore(startOfDay(examDate), today);
 
+              const parsedDescription = (() => {
+                try {
+                  return exam.description?.startsWith('{') ? JSON.parse(exam.description) : {};
+                } catch(e) { return {}; }
+              })();
+              const logo = parsedDescription.logo_url;
+
               return (
-                <div key={exam.id || `exam-${idx}`} className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[200px]">
+                <div key={exam.id || `exam-${idx}`} className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[180px] relative group overflow-hidden">
+                  {/* Badges */}
+                  <div className="absolute top-3 right-3 flex flex-wrap gap-1 justify-end max-w-[60%]">
+                    {parsedDescription.badges?.map((badge: any, i: number) => {
+                      const badgeText = typeof badge === 'string' ? badge : badge.text;
+                      const badgeColor = typeof badge === 'string' ? 'emerald' : badge.color;
+                      const colorClass = 
+                        badgeColor === 'emerald' ? 'bg-[#15b86c]' :
+                        badgeColor === 'ruby' ? 'bg-[#d00000]' :
+                        badgeColor === 'sky' ? 'bg-[#0ea5e9]' :
+                        badgeColor === 'amber' ? 'bg-[#f59e0b]' :
+                        badgeColor === 'violet' ? 'bg-[#8b5cf6]' : 'bg-[#15b86c]';
+                      
+                      return (
+                        <span key={i} className={`${colorClass} text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm`}>
+                          {badgeText}
+                        </span>
+                      );
+                    })}
+                  </div>
+
                   <div className="flex-grow">
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">{exam.title}</h3>
-                    <p className="text-gray-400 text-sm">
-                      {exam.category || 'Entrance Exam'}
-                    </p>
+                    <div className="flex gap-4 items-start mb-4">
+                      {logo ? (
+                        <div className="w-14 h-14 min-w-[56px] rounded-xl overflow-hidden bg-gray-50 border border-gray-100 p-1 group-hover:scale-105 transition-transform duration-300">
+                          <img src={logo} alt={exam.title} className="w-full h-full object-contain" />
+                        </div>
+                      ) : (
+                        <div className="w-14 h-14 min-w-[56px] rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 transition-transform duration-300 group-hover:scale-105">
+                          <BookOpen size={24} />
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-[#15b86c] transition-colors line-clamp-2">{exam.title}</h3>
+                        <p className="text-gray-400 text-sm font-medium">
+                          {exam.category || 'Entrance Exam'}
+                        </p>
+                      </div>
+                    </div>
                     
-                    <div className="mt-8">
-                      <p className="text-gray-500 text-sm">
-                        {format(examDate, 'dd/MM/yyyy')}
+                    <div className="mt-4 flex flex-col justify-end">
+                      <p className="text-gray-500 text-sm font-medium mb-1">
+                        Exam Date: {format(examDate, 'dd MMM yyyy')}
                       </p>
                       <div className="flex justify-between items-end">
-                        <p className={`font-bold ${isPast ? 'text-gray-400' : 'text-[#d00000]'}`}>
+                        <p className={`font-black text-lg ${isPast ? 'text-gray-400' : 'text-[#d00000]'}`}>
                           {isPast ? 'Expired' : (daysLeft === 0 ? 'Exam Today' : `${daysLeft} days left`)}
                         </p>
-                        <Link to={`/exams/${slugify(exam.title)}`} className="text-[#15b86c] font-bold text-sm">
-                          View Details
+                        <Link to={`/exams/${slugify(exam.title)}`} className="text-[#15b86c] font-black text-sm hover:underline tracking-tight flex items-center gap-1">
+                          View Details <ArrowRight size={14} />
                         </Link>
                       </div>
                     </div>
@@ -341,26 +386,66 @@ export default function Home() {
           {loading && jobs.length === 0 ? (
             [1, 2, 3, 4].map(i => <CardSkeleton key={`skeleton-job-${i}`} />)
           ) : jobs.length > 0 ? (
-            jobs.map((job, idx) => (
-              <div key={job.id || `job-${idx}`} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl transition flex flex-col">
-                <div className="bg-orange-50 w-12 h-12 rounded-xl flex items-center justify-center text-orange-600 mb-4">
-                  <Award size={24} />
+            jobs.map((job, idx) => {
+              const parsedDescription = (() => {
+                try {
+                  return job.description?.startsWith('{') ? JSON.parse(job.description) : {};
+                } catch(e) { return {}; }
+              })();
+              const logo = parsedDescription.logo_url;
+
+              return (
+                <div key={job.id || `job-${idx}`} className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl transition flex flex-col relative group overflow-hidden min-h-[280px]">
+                  {/* Badges */}
+                  <div className="absolute top-3 right-3 flex flex-wrap gap-1 justify-end max-w-[60%]">
+                    {parsedDescription.badges?.map((badge: any, i: number) => {
+                      const badgeText = typeof badge === 'string' ? badge : badge.text;
+                      const badgeColor = typeof badge === 'string' ? 'amber' : badge.color;
+                      const colorClass = 
+                        badgeColor === 'emerald' ? 'bg-[#15b86c]' :
+                        badgeColor === 'ruby' ? 'bg-[#d00000]' :
+                        badgeColor === 'sky' ? 'bg-[#0ea5e9]' :
+                        badgeColor === 'amber' ? 'bg-[#f59e0b]' :
+                        badgeColor === 'violet' ? 'bg-[#8b5cf6]' : 'bg-orange-500';
+                      
+                      return (
+                        <span key={i} className={`${colorClass} text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm`}>
+                          {badgeText}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-start gap-4 mb-4">
+                    {logo ? (
+                      <div className="w-14 h-14 min-w-[56px] rounded-xl overflow-hidden bg-gray-50 border border-gray-100 p-1 group-hover:scale-105 transition-transform duration-300">
+                        <img src={logo} alt={job.title} className="w-full h-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="w-14 h-14 min-w-[56px] rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 transition-transform duration-300 group-hover:scale-105">
+                        <Award size={26} />
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 group-hover:text-orange-600 transition-colors line-clamp-2 leading-tight">{job.title}</h3>
+                      <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{job.department}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mb-6 flex-grow">
+                    <p className="text-sm text-gray-600 font-medium flex items-center gap-2">
+                      <Users size={16} className="text-gray-400" /> {job.posts} Vacancies
+                    </p>
+                    <p className="text-sm text-gray-600 font-medium flex items-center gap-2">
+                      <BookOpen size={16} className="text-gray-400" /> {job.qualification}
+                    </p>
+                  </div>
+                  <Link to={`/jobs/${slugify(job.title)}`} className="w-full block text-center bg-gray-900 text-white py-3 rounded-xl font-black text-sm hover:bg-gray-800 transition active:scale-[0.98]">
+                    View Details
+                  </Link>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2">{job.title}</h3>
-                <p className="text-sm text-gray-500 font-medium mb-4">{job.department}</p>
-                <div className="space-y-2 mb-6 flex-grow">
-                  <p className="text-sm text-gray-600 flex items-center gap-2">
-                    <Users size={16} className="text-gray-400" /> {job.posts} Vacancies
-                  </p>
-                  <p className="text-sm text-gray-600 flex items-center gap-2">
-                    <BookOpen size={16} className="text-gray-400" /> {job.qualification}
-                  </p>
-                </div>
-                <Link to={`/jobs/${slugify(job.title)}`} className="w-full block text-center bg-gray-900 text-white py-2.5 rounded-lg font-bold hover:bg-gray-800 transition">
-                  View Details
-                </Link>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="col-span-full text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
               <p className="text-gray-500 font-medium">No active job notifications at the moment.</p>

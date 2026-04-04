@@ -1,8 +1,10 @@
 // Test comment
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Plus, FileText, Loader2, AlertCircle, HelpCircle, FileJson } from "lucide-react";
+import { Edit, Trash2, Plus, FileText, Loader2, AlertCircle, HelpCircle, FileJson, Settings, X } from "lucide-react";
+import { Link } from "react-router-dom";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import ImageUpload from "../../components/common/ImageUpload";
 import mammoth from "mammoth";
 import JoditEditor from "jodit-react";
 import MathText from "../../components/common/MathText";
@@ -382,6 +384,9 @@ export default function ManageTests() {
   const [error, setError] = useState<string | null>(null);
   const [showMathGuide, setShowMathGuide] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatLogo, setNewCatLogo] = useState("");
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -405,13 +410,59 @@ export default function ManageTests() {
     if (error) console.error("Error fetching tests:", error);
   };
 
+  const fetchCategories = async () => {
+    try {
+      // 1. Fetch from Master List
+      const { data: masterData } = await supabase.from("test_categories").select("name");
+      const masterCats = masterData?.map(c => c.name) || [];
+
+      // 2. Fetch from Exams table (original source)
+      const { data: examsData } = await supabase.from("exams").select("category");
+      const examCats = examsData?.map(e => e.category).filter(Boolean) || [];
+
+      // 3. Fetch from existing Tests (current source)
+      const { data: testsData } = await supabase.from("tests").select("category");
+      const testCats = testsData?.map(t => t.category).filter(Boolean) || [];
+
+      // 4. Combine all and Sort
+      const combined = Array.from(new Set([...masterCats, ...examCats, ...testCats])).sort();
+      setCategories(combined);
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+    }
+  };
+
+  const handleQuickAddCategory = async () => {
+    if (!newCatName.trim()) return;
+    try {
+      const { error } = await supabase
+        .from("test_categories")
+        .insert({ 
+          name: newCatName.trim(),
+          logo_url: newCatLogo.trim() || null
+        });
+      
+      if (error) {
+        if (error.code === '23505') alert("Category already exists!");
+        else throw error;
+        return;
+      }
+
+      // Add to local state and select it
+      setCategories(prev => [...prev, newCatName.trim()].sort());
+      setCurrentTest((prev: any) => ({ ...prev, category: newCatName.trim() }));
+      setNewCatName("");
+      setNewCatLogo("");
+      setIsAddingCategory(false);
+    } catch (error: any) {
+      console.error("Error adding category:", error);
+      alert("Failed to add category: " + error.message);
+    }
+  };
+
   const fetchExams = async () => {
     const { data, error } = await supabase.from("exams").select("id, title, category");
-    if (data) {
-      setExams(data);
-      const uniqueCats = Array.from(new Set(data.map((e: any) => e.category).filter(Boolean)));
-      setCategories(uniqueCats as string[]);
-    }
+    if (data) setExams(data);
     if (error) console.error("Error fetching exams:", error);
   };
 
@@ -466,6 +517,7 @@ export default function ManageTests() {
   useEffect(() => {
     fetchTests();
     fetchExams();
+    fetchCategories();
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -863,6 +915,7 @@ export default function ManageTests() {
       const testData: any = {
         title: currentTest.title,
         timeLimit: parseInt(currentTest.timeLimit),
+        logo_url: currentTest.logo_url || "",
         category: currentTest.category || "Uncategorized",
         is_free: currentTest.is_free || false,
         is_live: currentTest.is_live || false,
@@ -1052,47 +1105,86 @@ export default function ManageTests() {
               </div>
             </div>
 
-            <div className="relative">
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1">Target Exam Category</label>
-              <div className="flex gap-4">
-                <input
-                  type="text"
-                  placeholder="Exam Category (e.g., TS ECET)"
-                  value={currentTest.category || ""}
-                  onChange={e => {
-                    setCurrentTest((prev: any) => ({ ...prev, category: e.target.value }));
-                    setShowCategorySuggestions(true);
-                  }}
-                  onFocus={() => setShowCategorySuggestions(true)}
-                  className="border-2 border-gray-100 p-4 rounded-2xl w-full text-sm font-black focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all"
-                  required
-                />
+            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
+              <ImageUpload 
+                label="Upload Test Logo Image" 
+                currentImage={currentTest.logo_url || ""} 
+                onUploadSuccess={(url) => setCurrentTest((prev: any) => ({ ...prev, logo_url: url }))} 
+              />
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center pl-1">
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Mock Test Category</label>
+                {!isAddingCategory ? (
+                  <button 
+                    type="button"
+                    onClick={() => setIsAddingCategory(true)}
+                    className="text-[9px] font-black text-blue-600 uppercase hover:underline flex items-center gap-1"
+                  >
+                    <Plus size={10} /> Add New Category
+                  </button>
+                ) : (
+                  <button 
+                    type="button"
+                    onClick={() => setIsAddingCategory(false)}
+                    className="text-[9px] font-black text-gray-400 uppercase hover:underline flex items-center gap-1"
+                  >
+                    <X size={10} /> Cancel
+                  </button>
+                )}
               </div>
-              
-              {showCategorySuggestions && categories.length > 0 && (
-                <div className="absolute z-[60] mt-2 w-full bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                  <div className="p-2 grid grid-cols-2 gap-2">
-                    {categories.map(cat => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => {
-                          setCurrentTest((prev: any) => ({ ...prev, category: cat }));
-                          setShowCategorySuggestions(false);
-                        }}
-                        className="text-left px-4 py-3 rounded-xl hover:bg-blue-50 text-xs font-bold text-gray-700 transition"
-                      >
-                        {cat}
-                      </button>
-                    ))}
+
+              {!isAddingCategory ? (
+                <select
+                  value={currentTest.category || ""}
+                  onChange={e => setCurrentTest((prev: any) => ({ ...prev, category: e.target.value }))}
+                  className="border-2 border-gray-100 p-4 rounded-2xl w-full text-sm font-black focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all bg-white"
+                  required
+                >
+                  <option value="">Select Category...</option>
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="bg-blue-50/30 p-6 rounded-[2rem] border-2 border-blue-100/50 space-y-4 animate-in slide-in-from-top-4 duration-500">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black text-blue-600 uppercase tracking-widest ml-1">Category Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. SSC CGL"
+                        value={newCatName}
+                        onChange={e => setNewCatName(e.target.value)}
+                        className="w-full bg-white border-2 border-blue-100/50 p-4 rounded-2xl text-sm font-black outline-none focus:border-blue-400 transition-all"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="text-[9px] font-black text-blue-600 uppercase tracking-widest ml-1">Category Logo (File Upload or URL)</label>
+                      <ImageUpload 
+                        onUploadSuccess={(url) => setNewCatLogo(url)}
+                        currentImage={newCatLogo}
+                        label="Upload Category Logo"
+                        bucket="test-series"
+                      />
+                    </div>
                   </div>
-                  <div className="bg-gray-50 p-2 text-center border-t border-gray-100">
+                  
+                  <div className="flex justify-end gap-3 pt-2">
                     <button 
-                      type="button" 
-                      onClick={() => setShowCategorySuggestions(false)}
-                      className="text-[9px] font-black text-gray-400 uppercase hover:text-gray-600"
+                      type="button"
+                      onClick={() => setIsAddingCategory(false)}
+                      className="px-6 py-3 rounded-xl text-[10px] font-black uppercase text-gray-400 hover:text-gray-600 transition"
                     >
-                      Close Suggestions
+                      Cancel
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={handleQuickAddCategory}
+                      className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-xl shadow-blue-200"
+                    >
+                      Save Category
                     </button>
                   </div>
                 </div>

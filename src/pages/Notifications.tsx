@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { supabase } from "../services/supabaseClient";
+import SEO from "../components/common/SEO";
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -16,6 +17,10 @@ export default function Notifications() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+      <SEO 
+        title="Latest Updates & Notifications" 
+        description="Stay updated with the latest exam dates, results, job alerts, and new mock tests on PrepDosth. Real-time alerts for TSPSC, APPSC, and more."
+      />
       <h1 className="text-3xl font-bold mb-8 text-gray-800 flex items-center gap-3">
         <Bell className="text-[#15b86c]" /> All Latest Updates
       </h1>

@@ -20,7 +20,6 @@ export default function AdminLayout() {
     { to: "/admin/home", icon: <Home size={20} />, label: "Manage Home" },
     { to: "/admin/menu", icon: <Menu size={20} />, label: "Menu Management" },
     { to: "/admin/mega-menu", icon: <BookOpen size={20} />, label: "Mega Menu Content" },
-    { to: "/admin/important-links", icon: <FileText size={20} />, label: "Important Links" },
     { to: "/admin/categories", icon: <Settings size={20} />, label: "Manage Categories" },
     { to: "/admin/users", icon: <Users size={20} />, label: "Users" },
     { to: "/admin/premium", icon: <Crown size={20} />, label: "Premium Content", className: "text-yellow-500" },
