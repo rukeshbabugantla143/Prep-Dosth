@@ -531,7 +531,7 @@ export default function ExamDetails() {
                         </h2>
                         <p className="text-gray-500 text-[10px] mt-0.5 uppercase font-black tracking-widest opacity-80">Hand-picked assessments for your {exam.title} preparation.</p>
                       </div>
-                      <Link to="/tests" className="text-[#0ea5e9] text-[11px] font-black uppercase tracking-widest hover:underline px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg transition-all shadow-sm border border-blue-100/50">View All</Link>
+                      <Link to={`/user/series/${encodeURIComponent(tests[0]?.category)}`} className="text-[#0ea5e9] text-[11px] font-black uppercase tracking-widest hover:underline px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg transition-all shadow-sm border border-blue-100/50">View All</Link>
                     </div>
 
                     {/* Pixel-Perfect Premium Series Card (Fallback) */}

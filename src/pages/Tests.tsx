@@ -196,7 +196,7 @@ export default function Tests() {
 
                   {/* Footer Action Button */}
                   <button 
-                    onClick={() => setSelectedCategory(cat)}
+                    onClick={() => navigate(`/user/series/${encodeURIComponent(cat)}`)}
                     className="w-full bg-gradient-to-r from-[#0ea5e9] via-[#38bdf8] to-[#0ea5e9] bg-[length:200%_100%] hover:bg-right text-white py-4 font-black uppercase text-[11px] tracking-widest transition-all duration-500 active:scale-95 shadow-inner"
                   >
                     View All Tests
@@ -231,58 +231,73 @@ export default function Tests() {
               const endStr = end.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
 
               return (
-                <div key={test.id} className={`group bg-gradient-to-br from-white to-blue-50/20 rounded-xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col relative ${isExpired ? 'opacity-75 grayscale-[0.5]' : ''}`}>
-                  <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-pink-500/20 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  {/* Top Badges Row */}
-                  <div className="p-4 pb-2 flex items-center gap-2">
-                    {isFuture ? (
-                      <div className="bg-blue-400 text-white px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-tight shadow-sm">
-                        Coming Soon
+                <div key={test.id} className={`group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 flex flex-col relative ${isExpired ? 'opacity-75 grayscale-[0.5]' : ''}`}>
+                  {/* Subtle color highlight on hover */}
+                  <div className="absolute top-0 left-0 w-1 h-full bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  
+                  <div className="flex items-center gap-4 p-4 pb-0.5">
+                    <div className="w-12 h-12 bg-gradient-to-br from-gray-50 to-white border border-gray-100 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-105 group-hover:border-blue-200 transition-all p-1 overflow-hidden shrink-0">
+                      <img src={test.logo_url || logo} alt={test.title} className="w-full h-full object-contain" />
+                    </div>
+                    <div className="flex flex-col gap-1 overflow-hidden">
+                      <div className="flex items-center gap-2">
+                        {isFuture ? (
+                          <div className="bg-blue-500 text-white px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tight shadow-md shadow-blue-100 w-fit">
+                            Coming Soon
+                          </div>
+                        ) : isLive && test.is_live ? (
+                          <div className="flex items-center gap-1 bg-red-500 text-white px-2 py-0.5 rounded shadow-lg shadow-red-100 w-fit">
+                            <div className="w-1 h-1 bg-white rounded-full animate-pulse"></div>
+                            <span className="text-[9px] font-black uppercase tracking-tight">Live Test</span>
+                          </div>
+                        ) : isExpired ? (
+                          <div className="bg-gray-400 text-white px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tight shadow-sm w-fit">
+                            Ended
+                          </div>
+                        ) : null}
+                        {test.is_free && (
+                          <div className="bg-emerald-500 text-white px-2 py-0.5 rounded text-[9px] font-black uppercase shadow-lg shadow-emerald-100 w-fit">
+                            Free
+                          </div>
+                        )}
                       </div>
-                    ) : isLive && test.is_live ? (
-                      <div className="flex items-center gap-1 bg-gradient-to-r from-red-400 to-pink-400 text-white px-2 py-0.5 rounded-md shadow-sm">
-                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
-                        <span className="text-[10px] font-bold uppercase tracking-tight">Live Test</span>
-                      </div>
-                    ) : isExpired ? (
-                      <div className="bg-gray-300 text-white px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-tight shadow-sm">
-                        Ended
-                      </div>
-                    ) : null}
-                    {test.is_free && (
-                      <div className="bg-gradient-to-r from-green-400 to-lime-400 text-white px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-tight shadow-sm">
-                        Free
-                      </div>
-                    )}
+                      <h2 className="text-[14px] font-black text-gray-900 leading-tight group-hover:text-blue-600 transition-colors line-clamp-1 truncate uppercase tracking-tight">
+                        {test.title}
+                      </h2>
+                    </div>
                   </div>
 
-                  <div className="px-5 py-2">
-                    <h2 className="text-[15px] font-bold text-gray-800 mb-3 leading-snug group-hover:text-[#00bcd4] transition-colors line-clamp-2">
-                      {test.title}
-                    </h2>
-
-                    {/* Compact Stats Row */}
-                    <div className="flex items-center gap-3 text-gray-400 mb-5">
-                      <div className="flex items-center gap-1.5">
-                        <FileText size={14} className="opacity-60" />
-                        <span className="text-[11px] font-medium">{test.questions?.length || 0} Questions</span>
+                  <div className="px-5 pb-5 flex flex-col flex-1">
+                    {/* Compact Stats Row with soft coloring */}
+                    <div className="flex items-center gap-3 text-gray-400 mb-5 border-t border-gray-50 pt-4 mt-1">
+                      <div className="flex items-center gap-1.5 group/stat">
+                        <div className="w-5 h-5 bg-blue-50 rounded flex items-center justify-center text-blue-500 group-hover/stat:bg-blue-600 group-hover/stat:text-white transition-all">
+                          <FileText size={10} />
+                        </div>
+                        <span className="text-[10px] font-black tracking-tight uppercase group-hover/stat:text-blue-600 transition-colors">{test.questions?.length || 0} Questions</span>
                       </div>
-                      <span className="opacity-20 text-xs">|</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-medium">{test.timeLimit} Mins.</span>
+                      <span className="opacity-10 text-xs text-gray-300">|</span>
+                      <div className="flex items-center gap-1.5 group/stat">
+                        <div className="w-5 h-5 bg-emerald-50 rounded flex items-center justify-center text-emerald-500 group-hover/stat:bg-emerald-500 group-hover/stat:text-white transition-all">
+                          <Clock size={10} />
+                        </div>
+                        <span className="text-[10px] font-black tracking-tight uppercase group-hover/stat:text-emerald-500 transition-colors">{test.timeLimit} Min.</span>
                       </div>
-                      <span className="opacity-20 text-xs">|</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-medium">{test.total_marks || 40} Marks</span>
+                      <span className="opacity-10 text-xs text-gray-300">|</span>
+                      <div className="flex items-center gap-1.5 group/stat">
+                        <div className="w-5 h-5 bg-amber-50 rounded flex items-center justify-center text-amber-500 group-hover/stat:bg-amber-500 group-hover/stat:text-white transition-all">
+                          <Trophy size={10} />
+                        </div>
+                        <span className="text-[10px] font-black tracking-tight uppercase group-hover/stat:text-amber-500 transition-colors">{test.total_marks || 100} Marks</span>
                       </div>
                     </div>
 
                     {/* Availability + Action Row */}
-                    <div className="flex items-center justify-between mt-auto pt-2 pb-4">
+                    <div className="flex items-center justify-between mt-auto">
                       <div className="flex items-center gap-2 text-gray-400/80">
-                        <Clock size={16} className={`opacity-40 ${isLive ? 'text-[#00bcd4]' : ''}`} />
-                        <span className={`text-[11px] font-medium ${isLive ? 'text-[#00bcd4]' : ''}`}>
-                          {startStr} to {endStr}
+                        <Clock size={16} className={`opacity-40 ${isLive ? 'text-blue-500' : ''}`} />
+                        <span className={`text-[10px] font-black ${isLive ? 'text-blue-600' : 'text-gray-400'} tracking-widest uppercase`}>
+                          {startStr}
                         </span>
                       </div>
                       
@@ -291,20 +306,20 @@ export default function Tests() {
                           <button 
                             onClick={() => isLive && startTest(test.id)}
                             disabled={!isLive}
-                            className={`px-6 py-2 rounded-lg font-bold text-[11px] transition-all duration-500 shadow-md ${
+                            className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-500 shadow-xl ${
                               isFuture 
                                 ? 'bg-blue-50 text-blue-400 cursor-not-allowed border border-blue-100'
                                 : isExpired
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                                : 'bg-gradient-to-r from-[#0ea5e9] via-[#38bdf8] to-[#0ea5e9] bg-[length:200%_100%] hover:bg-right text-white shadow-cyan-100 active:scale-95'
+                                : 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-blue-200 hover:scale-105 active:scale-95'
                             }`}
                           >
-                            {isFuture ? 'Coming Soon' : isExpired ? 'Expired' : 'Start Now'}
+                            {isFuture ? 'SOON' : isExpired ? 'EXPIRED' : 'START TEST'}
                           </button>
                         ) : (
                           <button 
                             onClick={() => navigate("/login")}
-                            className="bg-gray-50 text-gray-400 px-6 py-2 rounded-lg font-bold text-[11px] border border-gray-100 transition-all hover:bg-gray-100"
+                            className="bg-gray-50 text-gray-400 px-5 py-2.5 rounded-xl font-black text-[10px] border border-gray-100 uppercase tracking-widest transition-all hover:bg-gray-100"
                           >
                             Login
                           </button>

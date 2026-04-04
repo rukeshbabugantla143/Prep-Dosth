@@ -45,6 +45,7 @@ const AttemptTest = lazy(() => import("./pages/user/AttemptTest"));
 const Results = lazy(() => import("./pages/user/Results"));
 const Profile = lazy(() => import("./pages/user/Profile"));
 const TestReview = lazy(() => import("./pages/user/TestReview"));
+const TestSeriesDetails = lazy(() => import("./pages/user/TestSeriesDetails"));
 
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -99,6 +100,7 @@ export default function App() {
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+              <Route path="/user/series/:category" element={<ProtectedRoute role="user"><TestSeriesDetails /></ProtectedRoute>} />
             </Route>
 
             {/* Dashboard Redirect */}
@@ -115,6 +117,7 @@ export default function App() {
               <Route path="results" element={<Results />} />
               <Route path="results/:resultId" element={<TestReview />} />
             </Route>
+            <Route path="/user/test/:id" element={<ProtectedRoute role="user"><AttemptTest /></ProtectedRoute>} />
             <Route path="/user/test/:id" element={<ProtectedRoute role="user"><AttemptTest /></ProtectedRoute>} />
 
             {/* Admin Routes */}

@@ -921,6 +921,7 @@ export default function ManageTests() {
         is_live: currentTest.is_live || false,
         test_type: currentTest.test_type || "Full Length Mock",
         total_marks: parseInt(currentTest.total_marks) || 100,
+        branch: currentTest.branch || "",
         languages: currentTest.languages || "English, Telugu",
         start_date: currentTest.start_date || new Date().toISOString(),
         end_date: currentTest.end_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -1065,7 +1066,7 @@ export default function ManageTests() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Manage Tests</h1>
-        <button onClick={() => { setIsEditing(true); setCurrentTest({ questions: [], sections: ["General Section"], category: "Uncategorized", is_free: false, is_live: false, test_type: "Full Length Mock", total_marks: 100, languages: "English, Telugu", start_date: new Date().toISOString().split('T')[0], end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }); setActiveTab("General Section"); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
+        <button onClick={() => { setIsEditing(true); setCurrentTest({ questions: [], sections: ["General Section"], category: "Uncategorized", is_free: false, is_live: false, branch: "", test_type: "Full Length Mock", total_marks: 100, languages: "English, Telugu", start_date: new Date().toISOString().split('T')[0], end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] }); setActiveTab("General Section"); }} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition">
           <Plus size={20} /> Create Test
         </button>
       </div>
@@ -1243,6 +1244,17 @@ export default function ManageTests() {
                   onChange={e => setCurrentTest((prev: any) => ({ ...prev, total_marks: e.target.value }))}
                   className="border-2 border-white p-4 rounded-2xl w-full text-sm font-black focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm"
                   placeholder="e.g. 100"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Branch (Optional)</label>
+                <input
+                  type="text"
+                  value={currentTest.branch || ""}
+                  onChange={e => setCurrentTest((prev: any) => ({ ...prev, branch: e.target.value.toUpperCase() }))}
+                  className="border-2 border-white p-4 rounded-2xl w-full text-sm font-black focus:border-blue-400 focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm"
+                  placeholder="e.g. CSE, ECE, CIVIL"
                 />
               </div>
 

@@ -334,20 +334,35 @@ export default function Home() {
               [1, 2, 3, 4].map(i => <CardSkeleton key={`skeleton-test-${i}`} />)
             ) : tests.length > 0 ? (
               tests.map((test, idx) => (
-                <div key={test.id || `test-${idx}`} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl transition flex flex-col">
-                  <div className="bg-blue-50 w-12 h-12 rounded-xl flex items-center justify-center text-blue-600 mb-4">
-                    <FileText size={24} />
+                <div key={test.id || `test-${idx}`} className="group bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-200 transition-all duration-500 flex flex-col relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  
+                  <div className="w-14 h-14 bg-gradient-to-br from-gray-50 to-white rounded-2xl flex items-center justify-center p-2 border border-gray-100 group-hover:border-blue-200 group-hover:scale-110 transition-all duration-500 mb-6 shadow-sm">
+                    {test.logo_url ? (
+                      <img src={test.logo_url} alt={test.title} className="w-full h-full object-contain" />
+                    ) : (
+                      <FileText size={24} className="text-blue-600" />
+                    )}
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{test.title}</h3>
-                  <div className="space-y-2 mb-6 flex-grow">
-                    <p className="text-sm text-gray-600 flex items-center gap-2">
-                      <CheckCircle2 size={16} className="text-[#15b86c]" /> {test.questions?.length || 0} Total Tests
-                    </p>
-                    <p className="text-sm text-gray-600 flex items-center gap-2">
-                      <CheckCircle2 size={16} className="text-[#15b86c]" /> {test.timeLimit} Mins Duration
-                    </p>
+                  
+                  <h3 className="text-lg font-black text-gray-900 mb-3 line-clamp-2 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{test.title}</h3>
+                  
+                  <div className="space-y-3 mb-8 flex-grow">
+                    <div className="flex items-center gap-3 group/item">
+                      <div className="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-500 group-hover/item:bg-emerald-500 group-hover/item:text-white transition-all">
+                        <CheckCircle2 size={12} />
+                      </div>
+                      <p className="text-[11px] font-black text-gray-400 uppercase tracking-tight group-hover/item:text-emerald-600 transition-colors">Multiple Mock Tests</p>
+                    </div>
+                    <div className="flex items-center gap-3 group/item">
+                      <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500 group-hover/item:bg-blue-600 group-hover/item:text-white transition-all">
+                        <Clock size={12} />
+                      </div>
+                      <p className="text-[11px] font-black text-gray-400 uppercase tracking-tight group-hover/item:text-blue-600 transition-colors">{test.timeLimit} Minutes Duration</p>
+                    </div>
                   </div>
-                  <Link to={`/user/test/${test.id}`} className="w-full block text-center bg-white border-2 border-[#15b86c] text-[#15b86c] py-2.5 rounded-lg font-bold hover:bg-[#15b86c] hover:text-white transition">
+
+                  <Link to={`/user/test/${test.id}`} className="w-full block text-center bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-100 transition-all hover:scale-[1.02] active:scale-[0.98]">
                     Start Free Test
                   </Link>
                 </div>
