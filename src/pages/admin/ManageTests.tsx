@@ -1,7 +1,7 @@
 // Test comment
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../../services/supabaseClient";
-import { Edit, Trash2, Plus, FileText, Loader2, AlertCircle, HelpCircle, FileJson, Settings, X } from "lucide-react";
+import { Edit, Trash2, Plus, FileText, Loader2, AlertCircle, HelpCircle, FileJson, Settings, X, Copy, Check, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import ConfirmationModal from "../../components/ConfirmationModal";
 import ImageUpload from "../../components/common/ImageUpload";
@@ -388,6 +388,10 @@ export default function ManageTests() {
   const [newCatLogo, setNewCatLogo] = useState("");
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
+  const [showTestImportModal, setShowTestImportModal] = useState(false);
+  const [importSearchQuery, setImportSearchQuery] = useState("");
+  const [selectedImportTestId, setSelectedImportTestId] = useState<string | null>(null);
+  const [tempSelectedQuestions, setTempSelectedQuestions] = useState<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
 
@@ -458,6 +462,26 @@ export default function ManageTests() {
       console.error("Error adding category:", error);
       alert("Failed to add category: " + error.message);
     }
+  };
+
+  const handleImportFromTest = () => {
+    if (!selectedImportTestId) return;
+    const sourceTest = tests.find(t => t.id === selectedImportTestId);
+    if (!sourceTest || !sourceTest.questions) return;
+
+    const questionsToAdd = tempSelectedQuestions.map(idx => ({
+      ...sourceTest.questions[idx],
+      section: activeImportSection || sourceTest.questions[idx].section || "General Section"
+    }));
+
+    setCurrentTest((prev: any) => ({
+      ...prev,
+      questions: [...(prev.questions || []), ...questionsToAdd]
+    }));
+
+    setShowTestImportModal(false);
+    setSelectedImportTestId(null);
+    setTempSelectedQuestions([]);
   };
 
   const fetchExams = async () => {
@@ -1457,6 +1481,16 @@ export default function ManageTests() {
                             type="button"
                             onClick={() => {
                               setActiveImportSection(sectionName);
+                              setShowTestImportModal(true);
+                            }}
+                            className="bg-orange-500/20 text-orange-400 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-orange-500/30 transition flex items-center gap-2 backdrop-blur-sm border border-orange-500/30"
+                          >
+                            <Copy size={14} /> Import from Mock
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveImportSection(sectionName);
                               jsonInputRef.current?.click();
                             }}
                             disabled={isUploading}
@@ -1751,6 +1785,152 @@ export default function ManageTests() {
               >
                 Got it, thanks!
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import from Existing Test Modal */}
+      {showTestImportModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-4xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+            <div className="bg-orange-600 p-8 text-white shrink-0">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-black uppercase tracking-tight">Import Questions</h2>
+                  <p className="text-orange-200 text-[10px] font-bold uppercase tracking-widest mt-1">Reuse questions from your other tests</p>
+                </div>
+                <button onClick={() => setShowTestImportModal(false)} className="text-orange-200 hover:text-white transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8 flex flex-col md:flex-row gap-8 overflow-hidden">
+             {/* Test Selection Sidebar */}
+             <div className="w-full md:w-1/3 flex flex-col gap-4 border-r border-gray-100 pr-4 overflow-y-auto">
+               <div className="relative">
+                 <input
+                   type="text"
+                   placeholder="Search tests..."
+                   value={importSearchQuery}
+                   onChange={e => setImportSearchQuery(e.target.value)}
+                   className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-orange-400 transition-all"
+                 />
+                 <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+               </div>
+
+               <div className="space-y-2 flex-grow overflow-y-auto pr-2 pb-4">
+                 {tests.filter(t => t.id !== currentTest.id && t.title.toLowerCase().includes(importSearchQuery.toLowerCase())).map(test => (
+                   <button
+                     key={test.id}
+                     onClick={() => {
+                       setSelectedImportTestId(test.id);
+                       setTempSelectedQuestions([]);
+                     }}
+                     className={`w-full text-left p-4 rounded-2xl transition-all border-2 ${
+                       selectedImportTestId === test.id
+                         ? "border-orange-500 bg-orange-50 shadow-sm"
+                         : "border-gray-50 bg-gray-50 hover:border-gray-200"
+                     }`}
+                   >
+                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{test.category || "Uncategorized"}</p>
+                     <p className={`text-xs font-bold ${selectedImportTestId === test.id ? "text-orange-700" : "text-gray-700"}`}>{test.title}</p>
+                     <p className="text-[10px] text-gray-500 mt-2 font-black">{test.questions?.length || 0} Questions</p>
+                   </button>
+                 ))}
+               </div>
+             </div>
+
+             {/* Question Selection Area */}
+             <div className="flex-grow flex flex-col overflow-hidden">
+               {selectedImportTestId ? (
+                 <>
+                   <div className="flex justify-between items-center mb-4 shrink-0">
+                     <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">
+                       Select Questions ({tempSelectedQuestions.length} selected)
+                     </h3>
+                     <button
+                        onClick={() => {
+                          const sourceTest = tests.find(t => t.id === selectedImportTestId);
+                          if (sourceTest?.questions) {
+                             if (tempSelectedQuestions.length === sourceTest.questions.length) {
+                               setTempSelectedQuestions([]);
+                             } else {
+                               setTempSelectedQuestions(sourceTest.questions.map((_: any, i: number) => i));
+                             }
+                          }
+                        }}
+                        className="text-[10px] font-black text-orange-600 uppercase tracking-widest hover:underline"
+                     >
+                       {tests.find(t => t.id === selectedImportTestId)?.questions?.length === tempSelectedQuestions.length ? "Deselect All" : "Select All"}
+                     </button>
+                   </div>
+                   <div className="flex-grow overflow-y-auto space-y-3 pr-2 pb-4">
+                     {tests.find(t => t.id === selectedImportTestId)?.questions?.map((q: any, qIdx: number) => (
+                       <label
+                         key={qIdx}
+                         className={`block p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                           tempSelectedQuestions.includes(qIdx)
+                             ? "border-orange-500 bg-orange-50/50"
+                             : "border-gray-50 bg-gray-50 hover:border-gray-200"
+                         }`}
+                       >
+                         <div className="flex gap-4">
+                           <div className="shrink-0 pt-1">
+                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                               tempSelectedQuestions.includes(qIdx)
+                                 ? "bg-orange-500 border-orange-500 text-white"
+                                 : "bg-white border-gray-200"
+                             }`}>
+                               <input
+                                 type="checkbox"
+                                 className="hidden"
+                                 checked={tempSelectedQuestions.includes(qIdx)}
+                                 onChange={() => {
+                                   if (tempSelectedQuestions.includes(qIdx)) {
+                                     setTempSelectedQuestions(prev => prev.filter(i => i !== qIdx));
+                                   } else {
+                                     setTempSelectedQuestions(prev => [...prev, qIdx]);
+                                   }
+                                 }}
+                               />
+                               {tempSelectedQuestions.includes(qIdx) && <Check size={12} strokeWidth={4} />}
+                             </div>
+                           </div>
+                           <div>
+                              <div className="prose prose-xs max-w-none text-gray-700 line-clamp-2">
+                                <MathText text={q.questionText} />
+                              </div>
+                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-2">{q.section || "General Section"}</p>
+                           </div>
+                         </div>
+                       </label>
+                     ))}
+                   </div>
+                   <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+                     <button
+                       type="button"
+                       onClick={() => handleImportFromTest()}
+                       disabled={tempSelectedQuestions.length === 0}
+                       className="bg-orange-500 text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-orange-600 transition shadow-lg shadow-orange-500/20 disabled:opacity-50"
+                     >
+                       Add {tempSelectedQuestions.length} Questions
+                     </button>
+                   </div>
+                 </>
+               ) : (
+                 <div className="flex-grow flex items-center justify-center">
+                   <div className="text-center">
+                     <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                       <Copy size={32} className="text-orange-200" />
+                     </div>
+                     <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Select a test from the left</p>
+                     <p className="text-[10px] text-gray-300 font-bold uppercase mt-1">To see its questions and import them</p>
+                   </div>
+                 </div>
+               )}
+             </div>
             </div>
           </div>
         </div>
