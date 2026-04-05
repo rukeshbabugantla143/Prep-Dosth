@@ -127,7 +127,7 @@ export default function Jobs() {
                     </div>
                   )}
                   <div>
-                    <h2 className="text-xl font-bold text-blue-700 group-hover:text-orange-600 transition-colors line-clamp-2 leading-tight">{job.title}</h2>
+                    <h2 className="text-xl font-bold text-blue-700 group-hover:text-orange-600 transition-colors line-clamp-1 leading-tight">{job.title}</h2>
                     <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{job.department}</p>
                   </div>
                 </div>

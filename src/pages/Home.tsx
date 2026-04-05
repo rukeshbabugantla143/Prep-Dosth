@@ -269,7 +269,7 @@ export default function Home() {
                         </div>
                       )}
                       <div>
-                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-[#15b86c] transition-colors line-clamp-2">{exam.title}</h3>
+                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-[#15b86c] transition-colors line-clamp-1">{exam.title}</h3>
                         <p className="text-gray-400 text-sm font-medium">
                           {exam.category || 'Entrance Exam'}
                         </p>
@@ -450,7 +450,7 @@ export default function Home() {
                       </div>
                     )}
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900 group-hover:text-orange-600 transition-colors line-clamp-2 leading-tight">{job.title}</h3>
+                      <h3 className="text-lg font-bold text-gray-900 group-hover:text-orange-600 transition-colors line-clamp-1 leading-tight">{job.title}</h3>
                       <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">{job.department}</p>
                     </div>
                   </div>

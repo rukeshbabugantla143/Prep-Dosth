@@ -857,7 +857,7 @@ export default function ExamDetails() {
                         to={`/exams/${slugify(sub.title)}`} 
                         className="flex items-center justify-between p-4 hover:bg-blue-50/50 rounded-xl transition group border-b border-gray-50 last:border-0"
                       >
-                        <span className={`text-[14px] font-medium transition-colors ${slugify(sub.title) === slug ? 'text-blue-600' : 'text-gray-700 group-hover:text-blue-600'}`}>
+                        <span className={`text-[14px] font-medium transition-colors truncate flex-1 min-w-0 ${slugify(sub.title) === slug ? 'text-blue-600' : 'text-gray-700 group-hover:text-blue-600'}`}>
                         {sub.title}
                       </span>
                         <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />

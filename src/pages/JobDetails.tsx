@@ -654,7 +654,7 @@ export default function JobDetails() {
                       to={`/jobs/${slugify(sub.title)}`} 
                       className="flex items-center justify-between p-4 hover:bg-blue-50/50 rounded-xl transition group border-b border-gray-50 last:border-0"
                     >
-                      <span className={`text-[14px] font-medium transition-colors ${slugify(sub.title) === slug ? 'text-blue-600' : 'text-gray-700 group-hover:text-blue-600'}`}>
+                      <span className={`text-[14px] font-medium transition-colors truncate flex-1 min-w-0 ${slugify(sub.title) === slug ? 'text-blue-600' : 'text-gray-700 group-hover:text-blue-600'}`}>
                         {sub.title}
                       </span>
                       <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
@@ -731,7 +731,7 @@ export default function JobDetails() {
                 <div className="flex flex-col">
                   {importantLinks.map((link) => (
                     <Link key={link.id} to={link.url} className="p-3 px-4 text-sm text-gray-700 hover:text-[#15b86c] border-b border-gray-100 last:border-0 flex justify-between items-center transition-colors">
-                      {link.title}
+                      <span className="truncate flex-1 min-w-0">{link.title}</span>
                       <ChevronRight size={16} className="text-gray-400" />
                     </Link>
                   ))}

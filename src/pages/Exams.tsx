@@ -176,7 +176,7 @@ export default function Exams() {
                     </div>
                   )}
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900 group-hover:text-[#15b86c] transition-colors line-clamp-2">{exam.title}</h2>
+                    <h2 className="text-xl font-bold text-gray-900 group-hover:text-[#15b86c] transition-colors line-clamp-1">{exam.title}</h2>
                     <p className="text-gray-400 text-sm font-medium">
                       {exam.category || 'Entrance Exam'}
                     </p>
