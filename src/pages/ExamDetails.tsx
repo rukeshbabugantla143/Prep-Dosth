@@ -37,25 +37,31 @@ export default function ExamDetails() {
             .order('order_index', { ascending: true });
           if (linksData) setImportantLinks(linksData);
 
-          // NEW: Fetch parent exam if this is a subpage
+          // NEW: Fetch related pages (parent and all subpages) for sidebar consistency
+          const parentId = foundExam.parent_id || foundExam.id;
+          const { data: relatedData } = await supabase
+            .from('exams')
+            .select('id, title, is_subpage, parent_id')
+            .or(`id.eq.${parentId},parent_id.eq.${parentId}`)
+            .order('created_at', { ascending: true });
+          
+          if (relatedData) {
+            // Sort: Parent first, then subpages
+            const sortedLinks = relatedData.sort((a, b) => {
+              if (a.id === parentId) return -1;
+              if (b.id === parentId) return 1;
+              return 0;
+            });
+            setSubpages(sortedLinks);
+          }
+
+          // Set parent exam for breadcrumbs/info
           if (foundExam.parent_id) {
-            const { data: parentData } = await supabase
-              .from('exams')
-              .select('id, title')
-              .eq('id', foundExam.parent_id)
-              .single();
-            if (parentData) setParentExam(parentData);
+            const parent = relatedData?.find(r => r.id === foundExam.parent_id);
+            if (parent) setParentExam(parent);
           } else {
             setParentExam(null);
           }
-
-          // NEW: Fetch subpages if this is a main page
-          const { data: subData } = await supabase
-            .from('exams')
-            .select('id, title')
-            .eq('parent_id', foundExam.id)
-            .eq('is_subpage', true);
-          if (subData) setSubpages(subData);
         }
       }
       if (error) console.error("Error fetching exam details:", error);
@@ -322,21 +328,24 @@ export default function ExamDetails() {
       </div>
 
       {/* Sticky Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 inset-x-0 z-40 shadow-sm print:hidden">
+      <div className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40 shadow-sm print:hidden transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8 overflow-x-auto scrollbar-hide w-full">
+          <div className="flex space-x-1 md:space-x-8 overflow-x-auto scrollbar-hide py-1">
             {tabs.map((tab) => (
               <a
                 key={tab.id}
                 href={`#${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-3 text-sm font-semibold whitespace-nowrap border-b-4 transition-colors ${
+                className={`group py-4 px-3 text-xs md:text-sm font-black whitespace-nowrap border-b-2 transition-all relative ${
                   activeTab === tab.id
                     ? 'border-[#15b86c] text-[#15b86c]'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                    : 'border-transparent text-gray-500 hover:text-gray-900'
                 }`}
               >
-                {tab.text}
+                <span className="relative z-10 uppercase tracking-tighter">{tab.text}</span>
+                {activeTab === tab.id && (
+                  <div className="absolute inset-0 bg-green-50/50 -z-0 rounded-t-lg animate-in fade-in duration-500"></div>
+                )}
               </a>
             ))}
           </div>
@@ -449,7 +458,7 @@ export default function ExamDetails() {
                             </h2>
                             <p className="text-gray-600 text-[11px] mt-1.5 uppercase font-black tracking-widest opacity-90 pl-11">Hand-picked assessments for your {exam.title} preparation.</p>
                           </div>
-                          <Link to="/tests" className="text-[#15b86c] text-[11px] font-black uppercase tracking-widest hover:bg-[#15b86c] hover:text-white px-5 py-2.5 bg-white rounded-full transition-all shadow-md shadow-green-100/50 border border-green-100">View All</Link>
+                          <Link to="/tests" className="text-[#15b86c] text-[11px] font-black uppercase tracking-widest hover:bg-[#15b86c] hover:text-white px-6 py-2 bg-white rounded-full transition-all shadow-md shadow-green-100/50 border border-green-100 whitespace-nowrap shrink-0">View All</Link>
                         </div>
 
                         {/* Pixel-Perfect Premium Series Card */}
@@ -465,10 +474,7 @@ export default function ExamDetails() {
                                 <div className="w-11 h-11 bg-gray-50 rounded-2xl flex items-center justify-center p-1.5 border border-gray-100 shadow-inner group-hover:bg-white transition-colors duration-300">
                                   <img src={test.logo_url || logoUrl || "https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png"} alt="Logo" className="w-full h-full object-contain rounded-xl" />
                                 </div>
-                                <div className="flex items-center gap-1.5 bg-gray-50 text-gray-600 px-3 py-1 rounded-full text-[10px] font-bold border border-gray-100 group-hover:bg-white transition-colors duration-300">
-                                  <Zap size={11} className="text-orange-500 fill-orange-500" />
-                                  <span>{test.users_count || `${Math.floor(Math.random() * 80) + 10}k`} Users</span>
-                                </div>
+                                
                               </div>
                               
                               {/* Title */}
@@ -531,7 +537,7 @@ export default function ExamDetails() {
                         </h2>
                         <p className="text-gray-500 text-[10px] mt-0.5 uppercase font-black tracking-widest opacity-80">Hand-picked assessments for your {exam.title} preparation.</p>
                       </div>
-                      <Link to={`/user/series/${encodeURIComponent(tests[0]?.category)}`} className="text-[#0ea5e9] text-[11px] font-black uppercase tracking-widest hover:underline px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg transition-all shadow-sm border border-blue-100/50">View All</Link>
+                      <Link to={`/user/series/${encodeURIComponent(tests[0]?.category)}`} className="text-[#0ea5e9] text-[11px] font-black uppercase tracking-widest hover:underline px-6 py-2 bg-white/80 backdrop-blur-sm rounded-full transition-all shadow-sm border border-blue-100/50 whitespace-nowrap shrink-0">View All</Link>
                     </div>
 
                     {/* Pixel-Perfect Premium Series Card (Fallback) */}
@@ -543,10 +549,6 @@ export default function ExamDetails() {
                           <div className="flex justify-between items-start mb-3 relative z-10">
                             <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 p-1.5">
                               <img src={test.logo_url || logoUrl || "https://cdni.iconscout.com/illustration/premium/thumb/online-education-4364975-3625624.png"} alt="Logo" className="w-full h-full object-contain rounded-full" />
-                            </div>
-                            <div className="flex items-center gap-1.5 bg-white text-gray-600 px-2.5 py-0.5 rounded-full shadow-sm text-[10px] font-bold border border-gray-100">
-                              <Zap size={11} className="text-orange-500 fill-orange-500" />
-                              <span>{test.users_count || `${Math.floor(Math.random() * 80) + 10}k`} Users</span>
                             </div>
                           </div>
                           
@@ -845,7 +847,7 @@ export default function ExamDetails() {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                   <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
                     <h3 className="font-bold text-blue-900 flex items-center gap-2 uppercase text-[10px] tracking-widest">
-                      <Layers size={16} /> Important Exam Pages
+                      <Layers size={16} /> Important Links
                     </h3>
                   </div>
                   <div className="p-2">
@@ -855,7 +857,9 @@ export default function ExamDetails() {
                         to={`/exams/${slugify(sub.title)}`} 
                         className="flex items-center justify-between p-4 hover:bg-blue-50/50 rounded-xl transition group border-b border-gray-50 last:border-0"
                       >
-                        <span className="font-bold text-gray-700 text-[13px] group-hover:text-blue-600 transition-colors uppercase tracking-tight">{sub.title}</span>
+                        <span className={`text-[14px] font-medium transition-colors ${slugify(sub.title) === slug ? 'text-blue-600' : 'text-gray-700 group-hover:text-blue-600'}`}>
+                        {sub.title}
+                      </span>
                         <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
                       </Link>
                     ))}

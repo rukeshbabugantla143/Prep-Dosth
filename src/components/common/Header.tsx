@@ -25,6 +25,7 @@ import {
   Scale, 
   Briefcase 
 } from "lucide-react";
+import headerLogo from "../../assets/images/prepdosth header.png";
 
 interface MenuItem {
   id: string;
@@ -189,7 +190,7 @@ export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center">
-              <img src="https://res.cloudinary.com/dbkmzja6c/image/upload/v1773433603/prepdosth_zvc5qm.png" alt="PrepDosth Logo" className="h-8 object-contain" referrerPolicy="no-referrer" />
+              <img src={headerLogo} alt="PrepDosth Logo" className="h-8 object-contain" />
             </Link>
             <nav className="hidden md:flex space-x-6 text-sm font-semibold text-gray-700 h-full items-center">
               {dynamicMenu.map((item) => {

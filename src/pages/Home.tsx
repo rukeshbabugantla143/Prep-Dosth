@@ -14,6 +14,7 @@ export default function Home() {
   const [allExams, setAllExams] = useState<any[]>([]);
   const [heroes, setHeroes] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
+  const [stats, setStats] = useState<any[]>([]);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [categories, setCategories] = useState<{ name: string; count: number; icon: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,6 +72,10 @@ export default function Home() {
       
       const { data: latestExamsData } = await supabase.from("exams").select("*").eq('is_subpage', false).order('date', { ascending: false }).limit(3);
       if (latestExamsData) setLatestExams(latestExamsData);
+
+      const { data: statsData } = await supabase.from("home_stats").select("*").order("order_index", { ascending: true });
+      if (statsData && statsData.length > 0) setStats(statsData);
+      
       setLoading(false);
     };
     fetchData();
@@ -175,26 +180,29 @@ export default function Home() {
       {/* Stats Strip */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-20">
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          <div className="space-y-2">
-            <div className="flex justify-center text-[#15b86c]"><Users size={32} /></div>
-            <h3 className="text-2xl font-black text-gray-800">3.1 Crore+</h3>
-            <p className="text-sm font-medium text-gray-500">Students Trusted</p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-center text-[#15b86c]"><Award size={32} /></div>
-            <h3 className="text-2xl font-black text-gray-800">1 Lakh+</h3>
-            <p className="text-sm font-medium text-gray-500">Selections</p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-center text-[#15b86c]"><BookOpen size={32} /></div>
-            <h3 className="text-2xl font-black text-gray-800">70,000+</h3>
-            <p className="text-sm font-medium text-gray-500">Mock Tests</p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-center text-[#15b86c]"><PlayCircle size={32} /></div>
-            <h3 className="text-2xl font-black text-gray-800">10,000+</h3>
-            <p className="text-sm font-medium text-gray-500">Video Lessons</p>
-          </div>
+          {(stats.length > 0 ? stats : [
+            { id: 1, icon: 'Users', value: '3.1 Crore+', label: 'Students Trusted' },
+            { id: 2, icon: 'Award', value: '1 Lakh+', label: 'Selections' },
+            { id: 3, icon: 'BookOpen', value: '70,000+', label: 'Mock Tests' },
+            { id: 4, icon: 'PlayCircle', value: '10,000+', label: 'Video Lessons' }
+          ]).map((stat: any) => {
+            const IconComponent = (stat.icon === 'Users' ? Users : 
+                                  stat.icon === 'Award' ? Award : 
+                                  stat.icon === 'BookOpen' ? BookOpen : 
+                                  stat.icon === 'PlayCircle' ? PlayCircle : 
+                                  stat.icon === 'Calendar' ? Calendar : 
+                                  stat.icon === 'Video' ? Video : Users);
+            
+            return (
+              <div key={stat.id} className="space-y-2">
+                <div className="flex justify-center text-[#15b86c]">
+                  <IconComponent size={32} />
+                </div>
+                <h3 className="text-2xl font-black text-gray-800 tracking-tight">{stat.value}</h3>
+                <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+              </div>
+            );
+          })}
         </div>
       </section>
 
