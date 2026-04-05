@@ -747,7 +747,7 @@ export default function ManageJobs() {
             </div>
             <div className="space-y-2">
               <ImageUpload 
-                label="Job Logo" 
+                label="Job Logo (Recommended: 200 x 200 px)" 
                 currentImage={logoUrl} 
                 onUploadSuccess={(url) => setLogoUrl(url)} 
               />
@@ -785,7 +785,7 @@ export default function ManageJobs() {
                 <div className="md:col-span-2 mt-2">
                   <label className="text-xs font-bold text-gray-500 uppercase block mb-1">OR Upload Custom Image (Overrides all text configs above)</label>
                   <ImageUpload 
-                    label="Upload Banner Thumbnail" 
+                    label="Upload Banner Image (Recommended: 1200 x 400 px)" 
                     currentImage={bannerImage} 
                     onUploadSuccess={(url) => setBannerImage(url)} 
                   />

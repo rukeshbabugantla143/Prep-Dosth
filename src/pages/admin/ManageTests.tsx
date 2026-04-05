@@ -1108,7 +1108,7 @@ export default function ManageTests() {
 
             <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
               <ImageUpload 
-                label="Upload Test Logo Image" 
+                label="Upload Test Logo Image (Recommended: 200 x 200 px)" 
                 currentImage={currentTest.logo_url || ""} 
                 onUploadSuccess={(url) => setCurrentTest((prev: any) => ({ ...prev, logo_url: url }))} 
               />
@@ -1166,7 +1166,7 @@ export default function ManageTests() {
                       <ImageUpload 
                         onUploadSuccess={(url) => setNewCatLogo(url)}
                         currentImage={newCatLogo}
-                        label="Upload Category Logo"
+                        label="Upload Category Logo (Recommended: 200 x 200 px)"
                         bucket="test-series"
                       />
                     </div>

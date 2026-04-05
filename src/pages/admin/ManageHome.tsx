@@ -212,7 +212,7 @@ export default function ManageHome() {
             <form onSubmit={handleSaveHero} className="space-y-6">
               <div>
                 <ImageUpload 
-                  label="Hero Image (Full Width)" 
+                  label="Hero Image (Recommended: 1920 x 600 px)" 
                   currentImage={currentHero.image} 
                   onUploadSuccess={(url) => setCurrentHero({...currentHero, image: url})} 
                 />
@@ -397,7 +397,7 @@ export default function ManageHome() {
               <input type="text" placeholder="Title" value={currentSection.title || ""} onChange={e => setCurrentSection({...currentSection, title: e.target.value})} className="border p-3 rounded-lg w-full" required />
               <div className="md:col-span-2">
                 <ImageUpload 
-                  label="Section Image (Optional)" 
+                  label="Section Image (Recommended: 800 x 600 px)" 
                   currentImage={currentSection.image} 
                   onUploadSuccess={(url) => setCurrentSection({...currentSection, image: url})} 
                 />
